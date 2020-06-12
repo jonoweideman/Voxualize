@@ -21,9 +21,9 @@
 #include <vtk-7.1/vtkVolume.h>
 #include <vtk-7.1/vtkVolumeProperty.h>
 #include <vtk-7.1/vtkXMLImageDataReader.h>
-#include <vtkFloatArray.h>
-#include <vtkImageActor.h>
-#include <vtkInteractorStyleImage.h>
+#include <vtk-7.1/vtkFloatArray.h>
+#include <vtk-7.1/vtkImageActor.h>
+#include <vtk-7.1/vtkInteractorStyleImage.h>
 
 
 struct DataCube {
@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
   }
   else
   {
+    // Read raw binary file data into float array
     float* array = new float[540*450*201];
     struct DataCube dataCube;
     dataCube.fileName = argv[1];
@@ -53,81 +54,123 @@ int main(int argc, char *argv[])
     dataCube.array = array;
     readFromFile(&dataCube, array);
 
+    // Construct vtkFloatArray from this float array. No copying is done here
     vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
     floatArray->SetName("Float Array");
     floatArray->SetArray(array, dataCube.num_pixels, 1);
 
-//    float max = -10;
-//    float min = 10;
-//    for (int i = 0; i < dataCube.num_pixels; i++){
-//      float f = floats->GetValue(i);
-//      if ( f > max){
-//      max = f;}
-//      if ( f< min){
-//        min = f;
-//      }
-//    }
-//
-//    std::cout << max << "   " << min << std::endl;
-    //vtkSmartPointer<vtkImageData> imageData = vtkSmartPointer<vtkImageData>::New();
-    //imageData->SetDimensions(540,450,201);
+    // Create vtkImageImport object in order to use an array as input data to the volume mapper.
     vtkSmartPointer<vtkImageImport> imageImport = vtkSmartPointer<vtkImageImport>::New();
     imageImport -> SetDataScalarTypeToFloat();
     imageImport-> SetWholeExtent(0,540,0,450,0,201);
-    imageImport ->SetDataExtentToWholeExtent();
-    imageImport->SetImportVoidPointer(floatArray);
+    imageImport->SetDataExtent(0, 100, 0, 100, 0 ,50);
+    //imageImport ->SetDataExtentToWholeExtent(); // This line causes "Segmentation fault (core dumped)" when attempting 3D render.
+
+    imageImport->SetImportVoidPointer(floatArray->GetVoidPointer(0)); // Not sure what valueIdx to use.
+                                                    // This is probably the issue. This function requires a void *.
+                                                    // Other options are SetInputConnection(vtkAlgorithmOutput*) and SetInputData(vtkDataObject*)
+                                                    // NOTE: vtkFloatArray is not a vtkDataObject apparently.
     imageImport->SetNumberOfScalarComponents(1);
-    //reader->SetInputData(floatArray);
-    //imageData->ShallowCopy(reader->GetOutput());
-    imageImport -> SetDataSpacing(1,1,1);
+    imageImport -> SetDataSpacing(1,1,1); // Default values
     imageImport -> Update();
 
-//    float max = -10;
-//    float min = 10;
-//    for (int i = 0; i < dataCube.num_pixels; i++){
-//      float f = reader->GetInputInformation()
-//      if ( f > max){
-//      max = f;}
-//      if ( f< min){
-//        min = f;
-//      }
-//    }
-//
-//    std::cout << max << "   " << min << std::endl;
+    // The mapper / ray cast function know how to render the data
+    vtkSmartPointer<vtkSmartVolumeMapper> volumeMapper =
+      vtkSmartPointer<vtkSmartVolumeMapper>::New();
+    volumeMapper->SetBlendModeToComposite(); // composite first
+    volumeMapper->SetInputConnection(imageImport->GetOutputPort());
 
+    // Create the standard renderer, render window
+    // and interactor
+    vtkSmartPointer<vtkNamedColors> colors =
+      vtkSmartPointer<vtkNamedColors>::New();
 
-    // Create an actor
-    vtkSmartPointer<vtkImageActor> actor =
-      vtkSmartPointer<vtkImageActor>::New();
-    actor->SetInputData(imageImport->GetOutput());
-
-    // Setup renderer
-    vtkSmartPointer<vtkRenderer> renderer =
+    vtkSmartPointer<vtkRenderer> ren1 =
       vtkSmartPointer<vtkRenderer>::New();
-    renderer->AddActor(actor);
-    renderer->ResetCamera();
 
-    // Setup render window
-    vtkSmartPointer<vtkRenderWindow> renderWindow =
+    vtkSmartPointer<vtkRenderWindow> renWin =
       vtkSmartPointer<vtkRenderWindow>::New();
-    renderWindow->AddRenderer(renderer);
+    renWin->AddRenderer(ren1);
 
-    // Setup render window interactor
-    vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
+    vtkSmartPointer<vtkRenderWindowInteractor> iren =
       vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    vtkSmartPointer<vtkInteractorStyleImage> style =
-      vtkSmartPointer<vtkInteractorStyleImage>::New();
+    iren->SetRenderWindow(renWin);
 
-    renderWindowInteractor->SetInteractorStyle(style);
+    // Create transfer mapping scalar value to opacity
+    // Data values for ds9.arr 540x450x201 are in range [-0.139794;0.153026]
+    vtkSmartPointer<vtkPiecewiseFunction> opacityTransferFunction =
+      vtkSmartPointer<vtkPiecewiseFunction>::New();
+    opacityTransferFunction->AddPoint(-0.14, 0.0);
+    opacityTransferFunction->AddPoint(0.0, 0.1);
+    opacityTransferFunction->AddPoint(0.09, 0.9);
 
-    // Render and start interaction
-    renderWindowInteractor->SetRenderWindow(renderWindow);
-    renderWindow->Render();
-    renderWindowInteractor->Initialize();
+    // Create transfer mapping scalar value to color
+    vtkSmartPointer<vtkColorTransferFunction> colorTransferFunction =
+      vtkSmartPointer<vtkColorTransferFunction>::New();
+    colorTransferFunction->AddRGBPoint(-0.15, 0.0, 0.0, 0.0);
+    colorTransferFunction->AddRGBPoint(-0.0, 0.1, 0.1, 0.0);
+    colorTransferFunction->AddRGBPoint(1.6, 1.0, 1.0, 0.7);
 
-    renderWindowInteractor->Start();
+    // The property describes how the data will look
+    vtkSmartPointer<vtkVolumeProperty> volumeProperty =
+      vtkSmartPointer<vtkVolumeProperty>::New();
+    volumeProperty->SetColor(colorTransferFunction);
+    volumeProperty->SetScalarOpacity(opacityTransferFunction);
+    volumeProperty->ShadeOn();
+    volumeProperty->SetInterpolationTypeToLinear();
+
+    // The volume holds the mapper and the property and
+    // can be used to position/orient the volume
+    vtkSmartPointer<vtkVolume> volume =
+      vtkSmartPointer<vtkVolume>::New();
+    volume->SetMapper(volumeMapper);
+    volume->SetProperty(volumeProperty);
+
+    ren1->AddVolume(volume);
+    ren1->SetBackground(colors->GetColor3d("Wheat").GetData());
+    ren1->GetActiveCamera()->Azimuth(45);
+    ren1->GetActiveCamera()->Elevation(30);
+    ren1->ResetCameraClippingRange();
+    ren1->ResetCamera();
+
+    renWin->SetSize(600, 600);
+    renWin->Render();
+
+    iren->Start();
 
     return EXIT_SUCCESS;
+    // Create an actor
+//    vtkSmartPointer<vtkImageActor> actor =
+//      vtkSmartPointer<vtkImageActor>::New();
+//    actor->SetInputData(imageImport->GetOutput());
+//
+//    // Setup renderer
+//    vtkSmartPointer<vtkRenderer> renderer =
+//      vtkSmartPointer<vtkRenderer>::New();
+//    renderer->AddActor(actor);
+//    renderer->ResetCamera();
+//
+//    // Setup render window
+//    vtkSmartPointer<vtkRenderWindow> renderWindow =
+//      vtkSmartPointer<vtkRenderWindow>::New();
+//    renderWindow->AddRenderer(renderer);
+//
+//    // Setup render window interactor
+//    vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
+//      vtkSmartPointer<vtkRenderWindowInteractor>::New();
+//    vtkSmartPointer<vtkInteractorStyleImage> style =
+//      vtkSmartPointer<vtkInteractorStyleImage>::New();
+//
+//    renderWindowInteractor->SetInteractorStyle(style);
+//
+//    // Render and start interaction
+//    renderWindowInteractor->SetRenderWindow(renderWindow);
+//    renderWindow->Render();
+//    renderWindowInteractor->Initialize();
+//
+//    renderWindowInteractor->Start();
+//
+//    return EXIT_SUCCESS;
   }
 }
 
