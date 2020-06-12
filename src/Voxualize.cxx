@@ -62,9 +62,9 @@ int main(int argc, char *argv[])
     // Create vtkImageImport object in order to use an array as input data to the volume mapper.
     vtkSmartPointer<vtkImageImport> imageImport = vtkSmartPointer<vtkImageImport>::New();
     imageImport -> SetDataScalarTypeToFloat();
-    imageImport-> SetWholeExtent(0,540,0,450,0,201);
-    imageImport->SetDataExtent(0, 100, 0, 100, 0 ,50);
-    //imageImport ->SetDataExtentToWholeExtent(); // This line causes "Segmentation fault (core dumped)" when attempting 3D render.
+    imageImport-> SetWholeExtent(0,256,0,256,0,159);
+    //imageImport->SetDataExtent(0, 100, 0, 100, 0 ,50);
+    imageImport ->SetDataExtentToWholeExtent(); // This line causes "Segmentation fault (core dumped)" when attempting 3D render.
 
     imageImport->SetImportVoidPointer(floatArray->GetVoidPointer(0)); // Not sure what valueIdx to use.
                                                     // This is probably the issue. This function requires a void *.
@@ -101,15 +101,14 @@ int main(int argc, char *argv[])
     vtkSmartPointer<vtkPiecewiseFunction> opacityTransferFunction =
       vtkSmartPointer<vtkPiecewiseFunction>::New();
     opacityTransferFunction->AddPoint(-0.14, 0.0);
-    opacityTransferFunction->AddPoint(0.0, 0.1);
-    opacityTransferFunction->AddPoint(0.09, 0.9);
+    opacityTransferFunction->AddPoint(0.16, 1.0);
 
     // Create transfer mapping scalar value to color
     vtkSmartPointer<vtkColorTransferFunction> colorTransferFunction =
       vtkSmartPointer<vtkColorTransferFunction>::New();
-    colorTransferFunction->AddRGBPoint(-0.15, 0.0, 0.0, 0.0);
-    colorTransferFunction->AddRGBPoint(-0.0, 0.1, 0.1, 0.0);
-    colorTransferFunction->AddRGBPoint(1.6, 1.0, 1.0, 0.7);
+    colorTransferFunction->AddRGBPoint(-0.14, 0.0, 0.0, 0.0);
+    colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
+    //colorTransferFunction->AddRGBPoint(0.16, 1.0, 0.0, 0.7);
 
     // The property describes how the data will look
     vtkSmartPointer<vtkVolumeProperty> volumeProperty =
