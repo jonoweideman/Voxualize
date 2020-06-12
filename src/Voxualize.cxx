@@ -63,8 +63,7 @@ int main(int argc, char *argv[])
     vtkSmartPointer<vtkImageImport> imageImport = vtkSmartPointer<vtkImageImport>::New();
     imageImport -> SetDataScalarTypeToFloat();
     imageImport-> SetWholeExtent(0,256,0,256,0,159);
-    //imageImport->SetDataExtent(0, 100, 0, 100, 0 ,50);
-    imageImport ->SetDataExtentToWholeExtent(); // This line causes "Segmentation fault (core dumped)" when attempting 3D render.
+    imageImport ->SetDataExtentToWholeExtent();
 
     imageImport->SetImportVoidPointer(floatArray->GetVoidPointer(0)); // Not sure what valueIdx to use.
                                                     // This is probably the issue. This function requires a void *.
