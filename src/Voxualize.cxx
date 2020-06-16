@@ -1,5 +1,6 @@
 #include <fstream>
 #include <string>
+#include <cstdlib>
 #include <vtk-7.1/vtkCamera.h>
 #include <vtk-7.1/vtkColorTransferFunction.h>
 #include <vtk-7.1/vtkDataArray.h>
@@ -39,17 +40,21 @@ void readFrom(DataCube *pCube, vtkSmartPointer<vtkFloatArray> pointer);
 
 int main(int argc, char *argv[])
 {
+  std::string file = argv[1];
+  std::cout << file.substr(file.find_last_of('.')) << std::endl;
+
   if (argc < 2)
   {
     std::cout << "Please specify an input file" << std::endl;
   }
-  else
+  else if (file.substr(file.find_last_of('.'))==".arr" || file.substr(file.find('.'))==".raw")
   {
     // Read raw binary file data into float array
     struct DataCube dataCube;
     dataCube.fileName = argv[1];
-    dataCube.dimx = 256; dataCube.dimy = 256; dataCube.dimz = 159;
+    dataCube.dimx = atoi(argv[2]); dataCube.dimy = atoi(argv[3]); dataCube.dimz = atoi(argv[4]);
     dataCube.num_pixels = dataCube.dimx * dataCube.dimy * dataCube.dimz;
+    std::cout << dataCube.dimx << ' ' << dataCube.dimz << std::endl;
     dataCube.array = new float[dataCube.num_pixels];
     readFromFile(&dataCube, dataCube.array);
 

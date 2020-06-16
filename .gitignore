@@ -7,3 +7,4 @@ Makefile
 CPackConfig.cmake
 CMakeFiles
 Voxualize
+ds9.arr
