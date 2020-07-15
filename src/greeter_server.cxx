@@ -185,8 +185,10 @@ class GreeterServiceImpl final : public Greeter::Service {
     // Retrieve a list of files to view
     fs::path dir_path("./Data");
     std::string list = getFiles( dir_path);
+    std::cout << list << std::endl; // For debug.
 
-    // Send them with rpc call to client
+    // Modify the FilesList object so it contains the list of files
+    reply->filesList = list;
     return Status::OK;
   }
 
