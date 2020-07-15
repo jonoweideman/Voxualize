@@ -1,0 +1,3 @@
+[submodule "src/src/voxualize-protos"]
+	path = src/src/voxualize-protos
+	url = https://github.com/Seeker93/voxualize-protos.git
