@@ -168,7 +168,7 @@ int generateImage(std::string inputFile, std::string dimX, std::string dimY, std
 }
 
 class GreeterServiceImpl final : public Greeter::Service {
-  Status SayHello(ServerContext *context, const FileDetails *request,
+  Status ChooseFile(ServerContext *context, const FileDetails *request,
                   HelloReply *reply) override {
     std::string filename(request->filename());
     std::string dimx(request->dimensionx());
@@ -188,7 +188,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     std::cout << list << std::endl; // For debug.
 
     // Modify the FilesList object so it contains the list of files
-    reply->filesList = list;
+    //reply->set_filesList(list);
     return Status::OK;
   }
 
