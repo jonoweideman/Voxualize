@@ -30,6 +30,11 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 
+#include "boost/filesystem.hpp"   // includes all needed Boost.Filesystem declarations
+#include "boost/filesystem/path.hpp"
+#include <iostream>
+namespace fs = boost::filesystem;
+
 #include "helloworld.grpc.pb.h"
 
 using grpc::Server;
@@ -39,6 +44,8 @@ using grpc::Status;
 using helloworld::FileDetails;
 using helloworld::Greeter;
 using helloworld::HelloReply;
+using helloworld::FilesRequest;
+using helloworld::FilesList;
 
 struct DataCube
 {
@@ -160,19 +167,52 @@ int generateImage(std::string inputFile, std::string dimX, std::string dimY, std
   return EXIT_SUCCESS;
 }
 
-class GreeterServiceImpl final : public Greeter::Service
-{
+class GreeterServiceImpl final : public Greeter::Service {
   Status SayHello(ServerContext *context, const FileDetails *request,
-                  HelloReply *reply) override
-  {
+                  HelloReply *reply) override {
     std::string filename(request->filename());
     std::string dimx(request->dimensionx());
     std::string dimy(request->dimensiony());
     std::string dimz(request->dimensionz());
 
-    generateImage(filename, dimx, dimy, dimz);
+    generateImage("./Data/"+filename, dimx, dimy, dimz);
 
     return Status::OK;
+  }
+
+  Status ListFiles(ServerContext *context, const FilesRequest *request,
+                  FilesList *reply) override {
+    // Retrieve a list of files to view
+    fs::path dir_path("./Data");
+    std::string list = getFiles( dir_path);
+
+    // Send them with rpc call to client
+    return Status::OK;
+  }
+
+  // Function which receives a path to a directory, and returns a list of 
+  // all files contained in the directory and subdirectories
+  std::string getFiles(const fs::path & dir_path){
+    std::string list = "";
+    fs::directory_iterator end_itr; // default construction yields past-the-end
+    for ( fs::directory_iterator itr( dir_path ); itr != end_itr; ++itr ){
+      if ( fs::is_directory(itr->status()) )
+      {
+        if (list == "")
+          list =  getFiles( itr->path() ); //recursive call for subdirectory;
+        else
+          list = list + "\n" +  getFiles( itr->path() );;
+      }
+      else
+      {
+        if (list == "")
+          list = itr->path().leaf().string();
+        else
+          list = list + "\n" +  itr->path().leaf().string();
+      }
+    }
+    std::cout << list << std::endl;
+    return list;
   }
 };
 

@@ -27,6 +27,8 @@ else()
   add_definitions(-D_WIN32_WINNT=0x600)
 endif()
 
+find_package(Boost 1.73.0 COMPONENTS system filesystem REQUIRED)
+
 find_package(Threads REQUIRED)
 
 find_package(VTK COMPONENTS
@@ -169,6 +171,8 @@ foreach(_target
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
     ${VTK_LIBRARIES}
-    ${_PROTOBUF_LIBPROTOBUF})
+    ${_PROTOBUF_LIBPROTOBUF}
+    ${Boost_FILESYSTEM_LIBRARY}
+   ${Boost_SYSTEM_LIBRARY})
  
 endforeach()

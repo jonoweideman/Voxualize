@@ -11,3 +11,4 @@ ds9.arr
 src/cmake/
 protos/helloworld_grpc_web_pb.js
 protos/helloworld_pb.js
+.vscode/
