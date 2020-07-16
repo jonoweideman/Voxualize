@@ -175,7 +175,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     std::string dimy(request->dimensiony());
     std::string dimz(request->dimensionz());
 
-    generateImage("./Data/"+filename, dimx, dimy, dimz);
+    generateImage("../../../Data/"+filename, dimx, dimy, dimz);
 
     return Status::OK;
   }
@@ -183,7 +183,8 @@ class GreeterServiceImpl final : public Greeter::Service {
   Status ListFiles(ServerContext *context, const FilesRequest *request,
                   FilesList *reply) override {
     // Retrieve a list of files to view
-    fs::path dir_path("./Data");
+    std::cout << "In the ListFiles function on the server!" << std::endl;
+    fs::path dir_path("./");
     std::string list = getFiles( dir_path);
     std::cout << list << std::endl; // For debug.
 
