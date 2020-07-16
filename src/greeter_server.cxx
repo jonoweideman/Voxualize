@@ -197,7 +197,7 @@ class GreeterServiceImpl final : public Greeter::Service {
         createFilesListResponse(itr->path(), reply); // Recursive call for subdirectories
       else{
         reply->add_file_name(itr->path().leaf().string());
-        reply->add_file_size(std::to_string(fs::file_size(itr->path()))); 
+        reply->add_file_size(std::to_string((double)fs::file_size(itr->path())/1000000)); 
       }
     }
   }
