@@ -170,12 +170,12 @@ int generateImage(std::string inputFile, std::string dimX, std::string dimY, std
 class GreeterServiceImpl final : public Greeter::Service {
   Status ChooseFile(ServerContext *context, const FileDetails *request,
                   HelloReply *reply) override {
-    std::string filename(request->filename());
+    std::string file_name(request->file_name());
     std::string dimx(request->dimensionx());
     std::string dimy(request->dimensiony());
     std::string dimz(request->dimensionz());
 
-    generateImage("../../../Data/"+filename, dimx, dimy, dimz);
+    generateImage("../../../Data/"+file_name, dimx, dimy, dimz);
 
     return Status::OK;
   }
@@ -184,37 +184,22 @@ class GreeterServiceImpl final : public Greeter::Service {
                   FilesList *reply) override {
     // Retrieve a list of files to view
     fs::path dir_path("../../../Data/");
-    std::string list = getFiles( dir_path);
-    std::cout << "Sending this list to the server:" << std::endl << list << std::endl; // For debug.
-
-    // Modify the FilesList object so it contains the list of files
-    reply->set_fileslist(list);
+    createFilesListResponse( dir_path, reply);
     return Status::OK;
   }
 
-  // Function which receives a path to a directory, and returns a list of 
-  // all files contained in the directory and subdirectories
-  std::string getFiles(const fs::path & dir_path){
-    std::string list = "";
+  // Function which receives a path to a directory and a pointer to the FilesList reply.
+  // It must add all the file names and their sizes to the response.
+  void createFilesListResponse(const fs::path & dir_path, FilesList *reply){
     fs::directory_iterator end_itr; // default construction yields past-the-end
     for ( fs::directory_iterator itr( dir_path ); itr != end_itr; ++itr ){
       if ( fs::is_directory(itr->status()) )
-      {
-        if (list == "")
-          list =  getFiles( itr->path() ); //recursive call for subdirectory;
-        else
-          list = list + "\n" +  getFiles( itr->path() );;
-      }
-      else
-      {
-        if (list == "")
-          list = itr->path().leaf().string();
-        else
-          list = list + "\n" +  itr->path().leaf().string();
+        createFilesListResponse(itr->path(), reply); // Recursive call for subdirectories
+      else{
+        reply->add_file_name(itr->path().leaf().string());
+        reply->add_file_size(std::to_string(fs::file_size(itr->path()))); 
       }
     }
-    std::cout << list << std::endl;
-    return list;
   }
 };
 
