@@ -183,13 +183,12 @@ class GreeterServiceImpl final : public Greeter::Service {
   Status ListFiles(ServerContext *context, const FilesRequest *request,
                   FilesList *reply) override {
     // Retrieve a list of files to view
-    std::cout << "In the ListFiles function on the server!" << std::endl;
-    fs::path dir_path("./");
+    fs::path dir_path("../../../Data/");
     std::string list = getFiles( dir_path);
-    std::cout << list << std::endl; // For debug.
+    std::cout << "Sending this list to the server:" << std::endl << list << std::endl; // For debug.
 
     // Modify the FilesList object so it contains the list of files
-    //reply->set_filesList(list);
+    reply->set_fileslist(list);
     return Status::OK;
   }
 
