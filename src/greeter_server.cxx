@@ -198,7 +198,7 @@ class GreeterServiceImpl final : public Greeter::Service {
       else{
         FilesList::File* file = reply->add_files();
         file->set_file_name(itr->path().leaf().string());
-        file->set_file_size(std::to_string((double)fs::file_size(itr->path())/1000000)); 
+        file->set_file_size((float)fs::file_size(itr->path())/1000000); 
       }
     }
   }
