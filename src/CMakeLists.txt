@@ -157,14 +157,15 @@ add_custom_command(
       DEPENDS "${hw_proto}")
 
 # Include generated *.pb.h files
-include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}" ../include)
 
 # Targets greeter_[async_](client|server)
 include(${VTK_USE_FILE})
+file(GLOB SOURCES "../src/*.cxx")
 
 foreach(_target
   greeter_server)
-  add_executable(${_target} "${_target}.cxx"
+  add_executable(${_target} ${SOURCES}
     ${hw_proto_srcs}
     ${hw_grpc_srcs})
   target_link_libraries(${_target}

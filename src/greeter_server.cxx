@@ -36,6 +36,7 @@
 namespace fs = boost::filesystem;
 
 #include "helloworld.grpc.pb.h"
+#include "data_cube.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -47,56 +48,19 @@ using helloworld::HelloReply;
 using helloworld::FilesRequest;
 using helloworld::FilesList;
 
-struct DataCube
-{
-  std::string fileName;
-  int dimx, dimy, dimz;
-  size_t num_pixels;
-  float *array;
-};
-
-void readFromFile(DataCube *dataCube, float *array);
-
-void readFrom(DataCube *pCube, vtkSmartPointer<vtkFloatArray> pointer);
-
-void readFromFile(DataCube *dataCube, float *array)
-{
-  size_t num_pixels = dataCube->dimx * dataCube->dimy * dataCube->dimz;
-  std::cout << num_pixels << std::endl;
-  std::ifstream input_file(dataCube->fileName, ios::binary);
-  std::cout << dataCube->fileName << std::endl;
-  input_file.read((char *)array, num_pixels * sizeof(float));
-}
-
-int generateImage(std::string inputFile, std::string dimX, std::string dimY, std::string dimZ)
-{
-  std::string file = inputFile;
-  std::cout << file << std::endl;
-
-  // Read raw binary file data into float array
-  struct DataCube dataCube;
-  dataCube.fileName = inputFile;
-  dataCube.dimx = std::stoi(dimX);
-  dataCube.dimy = std::stoi(dimY);
-  dataCube.dimz = std::stoi(dimZ);
-  dataCube.num_pixels = dataCube.dimx * dataCube.dimy * dataCube.dimz;
-  std::cout << dataCube.dimx << ' ' << dataCube.dimz << std::endl;
-  dataCube.array = new float[dataCube.num_pixels];
-  readFromFile(&dataCube, dataCube.array);
-
-  // Construct vtkFloatArray from this float array. No copying is done here
+int renderOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
   floatArray->SetName("Float Array");
-  floatArray->SetArray(dataCube.array, dataCube.num_pixels, 1);
+  floatArray->SetArray((*dataCube).floatArray, (*dataCube).num_pixels, 1);
 
   // Create vtkImageImport object in order to use an array as input data to the volume mapper.
   vtkSmartPointer<vtkImageImport> imageImport = vtkSmartPointer<vtkImageImport>::New();
   imageImport->SetDataScalarTypeToFloat();
-  imageImport->SetWholeExtent(0, dataCube.dimx - 1, 0, dataCube.dimy - 1, 0, dataCube.dimz - 1);
+  imageImport->SetWholeExtent(0, dataCube->dimx - 1, 0, dataCube->dimy - 1, 0, dataCube->dimz - 1);
   imageImport->SetDataExtentToWholeExtent();
   imageImport->SetImportVoidPointer(floatArray->GetVoidPointer(0));
   imageImport->SetNumberOfScalarComponents(1);
-  imageImport->SetDataSpacing(1.0, double(dataCube.dimx) / dataCube.dimy, (double)dataCube.dimx / dataCube.dimz);
+  imageImport->SetDataSpacing(1.0, (double)(dataCube->dimx) / dataCube->dimy, (double)(dataCube->dimx) / dataCube->dimz);
   imageImport->Update();
 
   // The mapper / ray cast function know how to render the data
@@ -168,14 +132,22 @@ int generateImage(std::string inputFile, std::string dimX, std::string dimY, std
 }
 
 class GreeterServiceImpl final : public Greeter::Service {
+  // Service to return the data of a specified file. 
   Status ChooseFile(ServerContext *context, const FileDetails *request,
                   HelloReply *reply) override {
     std::string file_name(request->file_name());
-    std::string dimx(request->dimensionx());
-    std::string dimy(request->dimensiony());
-    std::string dimz(request->dimensionz());
+    DataCube dataCube(file_name);
+    std::cout << dataCube.constructedCorrectly << std::endl;
+    
+    renderOnServer(&dataCube); // For testing.
 
-    generateImage("../../../Data/"+file_name, dimx, dimy, dimz);
+    // TO DOs:
+
+    // compression
+
+    // return full array in response as bytes
+
+    // return LOD of array in response as bytes
 
     return Status::OK;
   }
