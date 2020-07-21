@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include "data_cube.h"
 
+// "Default" constructor
 DataCube::DataCube(std::string fileName){
   std::cout << "Constructing DataCube object from " + fileName + " file." << std::endl;
   (*this).fileName = fileName;
@@ -39,6 +40,7 @@ void DataCube::readRawFile(){
   if (getDimensions(&dims[0])){
     dimx = dims[0]; dimy = dims[1]; dimz = dims[2];
     num_pixels = dimx * dimy * dimz;
+    num_bytes = num_pixels * sizeof(float);
     if (dataType == "float"){ 
       floatArray = new float[num_pixels];
       std::ifstream input_file("../../../Data/" + fileName, std::ios::binary);
@@ -102,4 +104,8 @@ bool DataCube::getDimensions(int *dims){
     }
   }
   return false; // Could not find file.
+}
+
+char * DataCube::getBytePointer(){
+  return reinterpret_cast<char *>(floatArray);
 }

@@ -30,6 +30,11 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 
+#include <grpc/grpc.h>
+#include <grpcpp/server.h>
+#include <grpcpp/server_builder.h>
+#include <grpcpp/server_context.h>
+
 #include "boost/filesystem.hpp"   // includes all needed Boost.Filesystem declarations
 #include "boost/filesystem/path.hpp"
 #include <iostream>
@@ -41,10 +46,13 @@ namespace fs = boost::filesystem;
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
+using grpc::ServerWriter;
+using grpc::ServerReader;
+using grpc::ServerReaderWriter;
 using grpc::Status;
 using helloworld::FileDetails;
 using helloworld::Greeter;
-using helloworld::HelloReply;
+using helloworld::DataModel;
 using helloworld::FilesRequest;
 using helloworld::FilesList;
 
@@ -134,7 +142,7 @@ int renderOnServer(DataCube *dataCube){
 class GreeterServiceImpl final : public Greeter::Service {
   // Service to return the data of a specified file. 
   Status ChooseFile(ServerContext *context, const FileDetails *request,
-                  HelloReply *reply) override {
+                  ServerWriter<DataModel> *writer) override {
     std::string file_name(request->file_name());
     DataCube dataCube(file_name);
     std::cout << dataCube.constructedCorrectly << std::endl;
@@ -146,15 +154,29 @@ class GreeterServiceImpl final : public Greeter::Service {
     // compression
 
     // return full array in response as bytes
-
+    char * bytes = dataCube.getBytePointer();
+    int bytes_per_write = 64*64*64; // Performance tests to be run on this.
+    DataModel d;
+    for (int i = 0; i < dataCube.num_bytes; i += bytes_per_write){
+      if ( dataCube.num_bytes - i < bytes_per_write){
+        d.set_bytes(bytes, dataCube.num_bytes - i);
+        d.set_num_bytes(dataCube.num_bytes - i);
+      } else {
+        d.set_bytes(bytes, bytes_per_write);
+        d.set_num_bytes(bytes_per_write);
+      }
+      writer->Write(d);
+      bytes += bytes_per_write; // Update the pointer.
+    }
     // return LOD of array in response as bytes
-
+    std::cout << "Got here so...?" << std::endl;
     return Status::OK;
   }
 
   Status ListFiles(ServerContext *context, const FilesRequest *request,
                   FilesList *reply) override {
     // Retrieve a list of files to view
+    std::cout<< "ListFiles request on Server detected" << std::endl;
     fs::path dir_path("../../../Data/");
     createFilesListResponse( dir_path, reply);
     return Status::OK;
