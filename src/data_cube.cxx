@@ -3,18 +3,34 @@
 #include <iostream>
 #include <sstream>
 #include <cstdlib>
+#include <math.h>
+#include <limits>
 #include "data_cube.h"
 
+using namespace std;
 // "Default" constructor
 DataCube::DataCube(std::string fileName){
-  std::cout << "Constructing DataCube object from " + fileName + " file." << std::endl;
+  cout << "Constructing DataCube object from " + fileName + " file." << endl;
   (*this).fileName = fileName;
   readInData();
+
+  // Initialize LOD model variables.
+  new_dim_x = ceil((float)dimx/(float)x_scale_factor);
+  new_dim_y = ceil((float)dimy/(float)y_scale_factor);
+  new_dim_z = ceil((float)dimz/(float)z_scale_factor);
+  LOD_num_pixels = new_dim_x*new_dim_y*new_dim_z;
+  LODFloatArray = new float [LOD_num_pixels];
+}
+
+// Default destructor
+DataCube::~DataCube(){
+  delete [] floatArray;
+  delete [] LODFloatArray;
 }
 
 void DataCube::readInData(){
   if (fileName.find('.') > -1){
-    std::string fileSuffix(fileName.substr(fileName.find('.')));
+    string fileSuffix(fileName.substr(fileName.find('.')));
     if (fileSuffix == ".fits"){
       //Read FITS file. Don't need to search in File_Information.txt
       readFitsFile();
@@ -43,20 +59,20 @@ void DataCube::readRawFile(){
     num_bytes = num_pixels * sizeof(float);
     if (dataType == "float"){ 
       floatArray = new float[num_pixels];
-      std::ifstream input_file("../../../Data/" + fileName, std::ios::binary);
+      ifstream input_file("../../../Data/" + fileName, ios::binary);
       input_file.read((char *)floatArray, num_pixels * sizeof(float));
       constructedCorrectly = true;
       return;
     }
     else if (dataType == "int"){
       intArray = new int[num_pixels];
-      std::ifstream input_file("../../../Data/" + fileName, std::ios::binary);
+      ifstream input_file("../../../Data/" + fileName, ios::binary);
       input_file.read((char *)intArray, num_pixels * sizeof(int));
       constructedCorrectly = true;
       return;
     }
     else { 
-      std::cerr<< "Unrecognized data type." << std::endl;
+      cerr<< "Unrecognized data type." << endl;
       constructedCorrectly = false;
       return;
     }
@@ -80,15 +96,15 @@ void DataCube::readVtkFile(){
 
 bool DataCube::getDimensions(int *dims){
   // If filename is in File_Information.txt, return true.
-  std::ifstream infile("../../../Data/File_Information.txt");
-  std::string line;
+  ifstream infile("../../../Data/File_Information.txt");
+  string line;
 
-  while (std::getline(infile, line)){
+  while (getline(infile, line)){
     if (line[0] == '#') {continue;} // Line is a comment
 
-    std::istringstream iss(line);
-    std::string tempFileName;
-    std::string tempDataType;
+    istringstream iss(line);
+    string tempFileName;
+    string tempDataType;
     
     iss >> tempFileName;
     iss >> tempDataType;
@@ -96,7 +112,7 @@ bool DataCube::getDimensions(int *dims){
 
     if (tempFileName == fileName){
       // Found the file.
-      std::cout << "Found the file in File_Information.txt" << std::endl;
+      cout << "Found the file in File_Information.txt" << endl;
       dataType = tempDataType;
       return true;
     } else {
@@ -106,6 +122,37 @@ bool DataCube::getDimensions(int *dims){
   return false; // Could not find file.
 }
 
-char * DataCube::getBytePointer(){
+float * DataCube::generateLODModel(){
+  for (int i=0; i<new_dim_x; i++){
+    for (int j=0; j<new_dim_y; j++){
+      for (int k=0; k<new_dim_z; k++){
+        // Calc mean/min/max/etc...
+        *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k);
+      }
+    }
+  }
+  return LODFloatArray;
+}
+
+float DataCube::calculateMax(int i, int j, int k){
+  float max_pixel = numeric_limits<float>::min();
+  for (int x = i*x_scale_factor; x < (i+1)*x_scale_factor && x < dimx; x++){
+    for (int y = j*y_scale_factor; y < (j+1)*y_scale_factor && y < dimy; y++){
+      for (int z = k*z_scale_factor; z < (k+1)*z_scale_factor && z < dimz; z++){
+        float temp = *(floatArray + x + y*dimx + z*dimx*dimy);
+        if (isfinite(temp) && temp > max_pixel){
+          max_pixel = temp;
+        }
+      }
+    }
+  }
+  return max_pixel;
+}
+
+char * DataCube::getBytePointerFullModel(){
   return reinterpret_cast<char *>(floatArray);
+}
+
+char * DataCube::getBytePointerLODModel(){
+  return reinterpret_cast<char *>(LODFloatArray);
 }

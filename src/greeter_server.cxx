@@ -56,7 +56,7 @@ using helloworld::DataModel;
 using helloworld::FilesRequest;
 using helloworld::FilesList;
 
-int renderOnServer(DataCube *dataCube){
+int renderFullModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
   floatArray->SetName("Float Array");
   floatArray->SetArray((*dataCube).floatArray, (*dataCube).num_pixels, 1);
@@ -139,37 +139,110 @@ int renderOnServer(DataCube *dataCube){
   return EXIT_SUCCESS;
 }
 
+int renderLODModelOnServer(DataCube *dataCube){
+  vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
+  floatArray->SetName("Float Array");
+  floatArray->SetArray((*dataCube).LODFloatArray, (*dataCube).LOD_num_pixels, 1);
+
+  // Create vtkImageImport object in order to use an array as input data to the volume mapper.
+  vtkSmartPointer<vtkImageImport> imageImport = vtkSmartPointer<vtkImageImport>::New();
+  imageImport->SetDataScalarTypeToFloat();
+  imageImport->SetWholeExtent(0, dataCube->new_dim_x - 1, 0, dataCube->new_dim_y - 1, 0, dataCube->new_dim_z - 1);
+  imageImport->SetDataExtentToWholeExtent();
+  imageImport->SetImportVoidPointer(floatArray->GetVoidPointer(0));
+  imageImport->SetNumberOfScalarComponents(1);
+  imageImport->SetDataSpacing(1.0, (double)(dataCube->new_dim_x) / dataCube->new_dim_y, (double)(dataCube->new_dim_x) / dataCube->new_dim_z);
+  imageImport->Update();
+
+  // The mapper / ray cast function know how to render the data
+  vtkSmartPointer<vtkSmartVolumeMapper> volumeMapper =
+      vtkSmartPointer<vtkSmartVolumeMapper>::New();
+  volumeMapper->SetBlendModeToComposite(); // composite first
+  volumeMapper->SetInputConnection(imageImport->GetOutputPort());
+
+  // Create the standard renderer, render window
+  // and interactor
+  vtkSmartPointer<vtkNamedColors> colors =
+      vtkSmartPointer<vtkNamedColors>::New();
+
+  vtkSmartPointer<vtkRenderer> ren1 =
+      vtkSmartPointer<vtkRenderer>::New();
+
+  vtkSmartPointer<vtkRenderWindow> renWin =
+      vtkSmartPointer<vtkRenderWindow>::New();
+  renWin->AddRenderer(ren1);
+
+  vtkSmartPointer<vtkRenderWindowInteractor> iren =
+      vtkSmartPointer<vtkRenderWindowInteractor>::New();
+  iren->SetRenderWindow(renWin);
+
+  // Create transfer mapping scalar value to opacity
+  // Data values for ds9.arr 540x450x201 are in range [-0.139794;0.153026]
+  vtkSmartPointer<vtkPiecewiseFunction> opacityTransferFunction =
+      vtkSmartPointer<vtkPiecewiseFunction>::New();
+  //opacityTransferFunction->AddPoint(-0.14, 0.0);
+  opacityTransferFunction->AddPoint(-0.0, 0.0);
+  opacityTransferFunction->AddPoint(0.16, 1.0);
+
+  // Create transfer mapping scalar value to color
+  vtkSmartPointer<vtkColorTransferFunction> colorTransferFunction =
+      vtkSmartPointer<vtkColorTransferFunction>::New();
+  //colorTransferFunction->AddRGBPoint(-0.14, 0.0, 0.0, 0.0);
+  colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
+  colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
+  //colorTransferFunction->AddRGBPoint(0.16, 1.0, 0.0, 0.7);
+
+  // The property describes how the data will look
+  vtkSmartPointer<vtkVolumeProperty> volumeProperty =
+      vtkSmartPointer<vtkVolumeProperty>::New();
+  volumeProperty->SetColor(colorTransferFunction);
+  volumeProperty->SetScalarOpacity(opacityTransferFunction);
+  //volumeProperty->ShadeOn();
+  volumeProperty->SetInterpolationTypeToNearest();
+
+  // The volume holds the mapper and the property and
+  // can be used to position/orient the volume
+  vtkSmartPointer<vtkVolume> volume =
+      vtkSmartPointer<vtkVolume>::New();
+  volume->SetMapper(volumeMapper);
+  volume->SetProperty(volumeProperty);
+
+  ren1->AddVolume(volume);
+  ren1->SetBackground(colors->GetColor3d("Wheat").GetData());
+  ren1->GetActiveCamera()->Azimuth(45);
+  ren1->GetActiveCamera()->Elevation(30);
+  ren1->ResetCameraClippingRange();
+  ren1->ResetCamera();
+
+  renWin->SetSize(600, 600);
+  renWin->Render();
+
+  iren->Start();
+
+  return EXIT_SUCCESS;
+}
+
 class GreeterServiceImpl final : public Greeter::Service {
   // Service to return the data of a specified file. 
   Status ChooseFile(ServerContext *context, const FileDetails *request,
                   ServerWriter<DataModel> *writer) override {
     std::string file_name(request->file_name());
     DataCube dataCube(file_name);
-    std::cout << dataCube.constructedCorrectly << std::endl;
-    
-    renderOnServer(&dataCube); // For testing.
+    //renderFullModelOnServer(&dataCube); // For testing.
 
     // TO DOs:
 
     // compression
 
     // return full array in response as bytes
-    char * bytes = dataCube.getBytePointer();
-    int bytes_per_write = 64*64*64; // Performance tests to be run on this.
-    DataModel d;
-    for (int i = 0; i < dataCube.num_bytes; i += bytes_per_write){
-      if ( dataCube.num_bytes - i < bytes_per_write){
-        d.set_bytes(bytes, dataCube.num_bytes - i);
-        d.set_num_bytes(dataCube.num_bytes - i);
-      } else {
-        d.set_bytes(bytes, bytes_per_write);
-        d.set_num_bytes(bytes_per_write);
-      }
-      writer->Write(d);
-      bytes += bytes_per_write; // Update the pointer.
-    }
-    // return LOD of array in response as bytes
-    std::cout << "Got here so...?" << std::endl;
+    //streamFullModel(writer, &dataCube);
+
+    // Or return LOD of array in response as bytes
+    float * LODModel = dataCube.generateLODModel();
+
+    renderLODModelOnServer(&dataCube); //For testing.
+
+    //streamLODModel(writer, &dataCube, LODModel);
     return Status::OK;
   }
 
@@ -195,6 +268,29 @@ class GreeterServiceImpl final : public Greeter::Service {
         file->set_file_size((float)fs::file_size(itr->path())/1000000); 
       }
     }
+  }
+
+  // Function which streams the full model of a DataCube object
+  void streamFullModel(ServerWriter<DataModel> *writer, DataCube *dataCube){
+    char * bytes = dataCube->getBytePointerFullModel();
+    int bytes_per_write = 64*64*64; // Performance tests to be run on this.
+    DataModel d;
+    for (int i = 0; i < dataCube->num_bytes; i += bytes_per_write){
+      if ( dataCube->num_bytes - i < bytes_per_write){
+        d.set_bytes(bytes, dataCube->num_bytes - i);
+        d.set_num_bytes(dataCube->num_bytes - i);
+      } else {
+        d.set_bytes(bytes, bytes_per_write);
+        d.set_num_bytes(bytes_per_write);
+      }
+      writer->Write(d);
+      bytes += bytes_per_write; // Update the pointer.
+    }
+  }
+
+  void streamLODModel(ServerWriter<DataModel> *writer, DataCube *dataCube, float *LODModel){
+
+    
   }
 };
 

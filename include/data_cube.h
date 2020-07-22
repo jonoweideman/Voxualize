@@ -11,17 +11,27 @@ class DataCube{
     size_t num_bytes;
 
     // This should be templated. 
-    float* floatArray; int* intArray; double* doubleArray; char* charArray; // Depending on the data type
+    float *floatArray; int* intArray; double* doubleArray; char* charArray; // Depending on the data type
+
+    // The LOD related variables:
+    float *LODFloatArray;
+    int x_scale_factor = 2; int y_scale_factor = 2; int z_scale_factor = 2;
+    int new_dim_x; int new_dim_y; int new_dim_z;
+    int LOD_num_pixels;
 
     bool constructedCorrectly;
     DataCube(std::string fileName);
+    ~DataCube();
     void readInData();
     void readRawFile();
     void readFitsFile();
     void readVtkFile();
     bool getDimensions(int *dims);
+    float calculateMax(int i, int j, int k);
 
-    char * getBytePointer();
+    float * generateLODModel();
+    char * getBytePointerFullModel();
+    char * getBytePointerLODModel();
 
 };
 
