@@ -28,6 +28,7 @@ class DataCube{
     void readVtkFile();
     bool getDimensions(int *dims);
     float calculateMax(int i, int j, int k);
+    float calculateMean(int i, int j, int k);
 
     float * generateLODModel();
     char * getBytePointerFullModel();

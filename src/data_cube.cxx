@@ -128,6 +128,7 @@ float * DataCube::generateLODModel(){
       for (int k=0; k<new_dim_z; k++){
         // Calc mean/min/max/etc...
         *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k);
+        //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
       }
     }
   }
@@ -147,6 +148,23 @@ float DataCube::calculateMax(int i, int j, int k){
     }
   }
   return max_pixel;
+}
+
+float DataCube::calculateMean(int i, int j, int k){
+  float sum_pixels = 0;
+  int temp_num_pixels = 0;
+  for (int x = i*x_scale_factor; x < (i+1)*x_scale_factor && x < dimx; x++){
+    for (int y = j*y_scale_factor; y < (j+1)*y_scale_factor && y < dimy; y++){
+      for (int z = k*z_scale_factor; z < (k+1)*z_scale_factor && z < dimz; z++){
+        float temp = *(floatArray + x + y*dimx + z*dimx*dimy);
+        if (isfinite(temp)){
+          sum_pixels += temp;
+          temp_num_pixels++;
+        }
+      }
+    }
+  }
+  return sum_pixels / temp_num_pixels;
 }
 
 char * DataCube::getBytePointerFullModel(){
