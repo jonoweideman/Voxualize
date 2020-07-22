@@ -238,11 +238,11 @@ class GreeterServiceImpl final : public Greeter::Service {
     //streamFullModel(writer, &dataCube);
 
     // Or return LOD of array in response as bytes
-    float * LODModel = dataCube.generateLODModel();
+    dataCube.generateLODModel();
 
-    renderLODModelOnServer(&dataCube); //For testing.
+    //renderLODModelOnServer(&dataCube); //For testing.
 
-    //streamLODModel(writer, &dataCube, LODModel);
+    streamLODModel(writer, &dataCube);
     return Status::OK;
   }
 
@@ -290,9 +290,21 @@ class GreeterServiceImpl final : public Greeter::Service {
     }
   }
 
-  void streamLODModel(ServerWriter<DataModel> *writer, DataCube *dataCube, float *LODModel){
-
-    
+  void streamLODModel(ServerWriter<DataModel> *writer, DataCube *dataCube){
+    char * bytes = dataCube->getBytePointerLODModel();
+    int bytes_per_write = 64*64*64; // Performance tests to be run on this.
+    DataModel d;
+    for (int i = 0; i < dataCube->LOD_num_bytes; i += bytes_per_write){
+      if ( dataCube->LOD_num_bytes - i < bytes_per_write){
+        d.set_bytes(bytes, dataCube->LOD_num_bytes - i);
+        d.set_num_bytes(dataCube->LOD_num_bytes - i);
+      } else {
+        d.set_bytes(bytes, bytes_per_write);
+        d.set_num_bytes(bytes_per_write);
+      }
+      writer->Write(d);
+      bytes += bytes_per_write; // Update the pointer.
+    }
   }
 };
 

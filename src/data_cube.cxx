@@ -13,13 +13,7 @@ DataCube::DataCube(std::string fileName){
   cout << "Constructing DataCube object from " + fileName + " file." << endl;
   (*this).fileName = fileName;
   readInData();
-
-  // Initialize LOD model variables.
-  new_dim_x = ceil((float)dimx/(float)x_scale_factor);
-  new_dim_y = ceil((float)dimy/(float)y_scale_factor);
-  new_dim_z = ceil((float)dimz/(float)z_scale_factor);
-  LOD_num_pixels = new_dim_x*new_dim_y*new_dim_z;
-  LODFloatArray = new float [LOD_num_pixels];
+  generateLODModel();
 }
 
 // Default destructor
@@ -123,6 +117,14 @@ bool DataCube::getDimensions(int *dims){
 }
 
 float * DataCube::generateLODModel(){
+  // Initialize LOD model variables.
+  new_dim_x = ceil((float)dimx/(float)x_scale_factor);
+  new_dim_y = ceil((float)dimy/(float)y_scale_factor);
+  new_dim_z = ceil((float)dimz/(float)z_scale_factor);
+  LOD_num_pixels = new_dim_x*new_dim_y*new_dim_z;
+  LOD_num_bytes = LOD_num_pixels * sizeof(float);
+  LODFloatArray = new float [LOD_num_pixels];
+
   for (int i=0; i<new_dim_x; i++){
     for (int j=0; j<new_dim_y; j++){
       for (int k=0; k<new_dim_z; k++){

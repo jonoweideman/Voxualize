@@ -17,7 +17,8 @@ class DataCube{
     float *LODFloatArray;
     int x_scale_factor = 2; int y_scale_factor = 2; int z_scale_factor = 2;
     int new_dim_x; int new_dim_y; int new_dim_z;
-    int LOD_num_pixels;
+    size_t LOD_num_pixels;
+    size_t LOD_num_bytes;
 
     bool constructedCorrectly;
     DataCube(std::string fileName);
