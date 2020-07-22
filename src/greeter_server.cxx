@@ -263,9 +263,11 @@ class GreeterServiceImpl final : public Greeter::Service {
       if ( fs::is_directory(itr->status()) )
         createFilesListResponse(itr->path(), reply); // Recursive call for subdirectories
       else{
-        FilesList::File* file = reply->add_files();
-        file->set_file_name(itr->path().leaf().string());
-        file->set_file_size((float)fs::file_size(itr->path())/1000000); 
+        if (itr->path().leaf().string() != "File_Information.txt"){
+          FilesList::File* file = reply->add_files();
+          file->set_file_name(itr->path().leaf().string());
+          file->set_file_size((float)fs::file_size(itr->path())/1000000);
+        }
       }
     }
   }
