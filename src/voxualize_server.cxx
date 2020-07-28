@@ -40,7 +40,7 @@
 #include <iostream>
 namespace fs = boost::filesystem;
 
-#include "helloworld.grpc.pb.h"
+#include "voxualize.grpc.pb.h"
 #include "data_cube.h"
 
 using grpc::Server;
@@ -50,11 +50,11 @@ using grpc::ServerWriter;
 using grpc::ServerReader;
 using grpc::ServerReaderWriter;
 using grpc::Status;
-using helloworld::FileDetails;
-using helloworld::Greeter;
-using helloworld::DataModel;
-using helloworld::FilesRequest;
-using helloworld::FilesList;
+using voxualize::FileDetails;
+using voxualize::Greeter;
+using voxualize::DataModel;
+using voxualize::FilesRequest;
+using voxualize::FilesList;
 
 int renderFullModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();

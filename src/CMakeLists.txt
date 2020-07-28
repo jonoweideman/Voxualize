@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# cmake build file for C++ helloworld example.
+# cmake build file for C++ Voxualize.
 # Assumes protobuf and gRPC have been installed using cmake.
 # See cmake_externalproject/CMakeLists.txt for all-in-one cmake build
-# that automatically builds all the dependencies before building helloworld.
+# that automatically builds all the dependencies before building voxualize.
 
 cmake_minimum_required(VERSION 3.5.1)
 
-project(HelloWorld C CXX)
+project(Voxualize C CXX)
 
 if(NOT MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -138,36 +138,36 @@ else()
 endif()
 
 # Proto file
-get_filename_component(hw_proto "./voxualize-protos/helloworld.proto" ABSOLUTE)
-get_filename_component(hw_proto_path "${hw_proto}" PATH)
+get_filename_component(vox_proto "./voxualize-protos/voxualize.proto" ABSOLUTE)
+get_filename_component(vox_proto_path "${vox_proto}" PATH)
 
 # Generated sources
-set(hw_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.pb.cc")
-set(hw_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.pb.h")
-set(hw_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.grpc.pb.cc")
-set(hw_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.grpc.pb.h")
+set(vox_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/voxualize.pb.cc")
+set(vox_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/voxualize.pb.h")
+set(vox_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/voxualize.grpc.pb.cc")
+set(vox_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/voxualize.grpc.pb.h")
 add_custom_command(
-      OUTPUT "${hw_proto_srcs}" "${hw_proto_hdrs}" "${hw_grpc_srcs}" "${hw_grpc_hdrs}"
+      OUTPUT "${vox_proto_srcs}" "${vox_proto_hdrs}" "${vox_grpc_srcs}" "${vox_grpc_hdrs}"
       COMMAND ${_PROTOBUF_PROTOC}
       ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}"
         --cpp_out "${CMAKE_CURRENT_BINARY_DIR}"
-        -I "${hw_proto_path}"
+        -I "${vox_proto_path}"
         --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
-        "${hw_proto}"
-      DEPENDS "${hw_proto}")
+        "${vox_proto}"
+      DEPENDS "${vox_proto}")
 
 # Include generated *.pb.h files
 include_directories("${CMAKE_CURRENT_BINARY_DIR}" ../include)
 
-# Targets greeter_[async_](client|server)
+# Targets voxualize_[async_](client|server)
 include(${VTK_USE_FILE})
 file(GLOB SOURCES "../src/*.cxx")
 
 foreach(_target
-  greeter_server)
+  voxualize_server)
   add_executable(${_target} ${SOURCES}
-    ${hw_proto_srcs}
-    ${hw_grpc_srcs})
+    ${vox_proto_srcs}
+    ${vox_grpc_srcs})
   target_link_libraries(${_target}
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
