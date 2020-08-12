@@ -34,6 +34,7 @@
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
+#include <google/protobuf/repeated_field.h>
 
 #include "boost/filesystem.hpp"   // includes all needed Boost.Filesystem declarations
 #include "boost/filesystem/path.hpp"
@@ -55,6 +56,7 @@ using voxualize::Greeter;
 using voxualize::DataModel;
 using voxualize::FilesRequest;
 using voxualize::FilesList;
+using voxualize::CameraInfo;
 
 int renderFullModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
@@ -235,14 +237,14 @@ class GreeterServiceImpl final : public Greeter::Service {
     // compression
 
     // return full array in response as bytes
-    //streamFullModel(writer, &dataCube);
+    streamFullModel(writer, &dataCube);
 
     // Or return LOD of array in response as bytes
-    dataCube.generateLODModel();
+    //dataCube.generateLODModel();
 
     //renderLODModelOnServer(&dataCube); //For testing.
 
-    streamLODModel(writer, &dataCube);
+    //streamLODModel(writer, &dataCube);
     return Status::OK;
   }
 
@@ -253,6 +255,18 @@ class GreeterServiceImpl final : public Greeter::Service {
     fs::path dir_path("../../../Data/");
     createFilesListResponse( dir_path, reply);
     return Status::OK;
+  }
+
+  Status GetHighQualityRender(ServerContext *context, const CameraInfo *request,
+                            ServerWriter<DataModel> *writer) override {
+    //For now, log the camera info.
+    const google::protobuf::RepeatedField<float> position = request->position();
+    std::cout<<"Position: " << position.Get(0) <<' ' << position.Get(1) << ' ' <<position.Get(2) << std::endl;
+
+    const google::protobuf::RepeatedField<float> focal_point = request->focal_point();
+    std::cout<<"Focal Point: " << focal_point.Get(0) <<' ' << focal_point.Get(1) << ' ' <<focal_point.Get(2) << std::endl;
+    
+    return Status::OK;    
   }
 
   // Function which receives a path to a directory and a pointer to the FilesList reply.
@@ -277,17 +291,26 @@ class GreeterServiceImpl final : public Greeter::Service {
     char * bytes = dataCube->getBytePointerFullModel();
     int bytes_per_write = 64*64*64; // Performance tests to be run on this.
     DataModel d;
-    for (int i = 0; i < dataCube->num_bytes; i += bytes_per_write){
-      if ( dataCube->num_bytes - i < bytes_per_write){
-        d.set_bytes(bytes, dataCube->num_bytes - i);
-        d.set_num_bytes(dataCube->num_bytes - i);
-      } else {
-        d.set_bytes(bytes, bytes_per_write);
-        d.set_num_bytes(bytes_per_write);
-      }
-      writer->Write(d);
-      bytes += bytes_per_write; // Update the pointer.
+    d.set_num_bytes(dataCube->num_bytes);
+    d.set_bytes(bytes, dataCube->num_bytes);
+    writer->Write(d);
+
+    float * floats = dataCube->getFloatPointerFullModel();
+    for (int i = 0; i<10; i ++){
+      cout << *(floats+i) << endl;
     }
+
+    // for (int i = 0; i < dataCube->num_bytes; i += bytes_per_write){
+    //   if ( dataCube->num_bytes - i < bytes_per_write){
+    //     d.set_bytes(bytes, dataCube->num_bytes - i);
+    //     d.set_num_bytes(dataCube->num_bytes - i);
+    //   } else {
+    //     d.set_bytes(bytes, bytes_per_write);
+    //     d.set_num_bytes(bytes_per_write);
+    //   }
+    //   writer->Write(d);
+    //   bytes += bytes_per_write; // Update the pointer.
+    // }
   }
 
   void streamLODModel(ServerWriter<DataModel> *writer, DataCube *dataCube){

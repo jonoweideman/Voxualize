@@ -34,6 +34,7 @@ class DataCube{
     float * generateLODModel();
     char * getBytePointerFullModel();
     char * getBytePointerLODModel();
+    float * getFloatPointerFullModel();
 
 };
 

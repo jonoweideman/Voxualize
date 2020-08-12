@@ -176,3 +176,7 @@ char * DataCube::getBytePointerFullModel(){
 char * DataCube::getBytePointerLODModel(){
   return reinterpret_cast<char *>(LODFloatArray);
 }
+
+float * DataCube::getFloatPointerFullModel(){
+  return floatArray;
+}
