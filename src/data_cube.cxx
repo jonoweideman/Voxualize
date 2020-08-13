@@ -9,7 +9,11 @@
 
 using namespace std;
 // "Default" constructor
-DataCube::DataCube(std::string fileName){
+DataCube::DataCube(void){
+}
+
+// The actuall default constructor
+void DataCube::createCube(std::string fileName){
   cout << "Constructing DataCube object from " + fileName + " file." << endl;
   (*this).fileName = fileName;
   readInData();

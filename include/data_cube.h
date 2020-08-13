@@ -21,7 +21,8 @@ class DataCube{
     size_t LOD_num_bytes;
 
     bool constructedCorrectly;
-    DataCube(std::string fileName);
+    DataCube(void);
+    void createCube(std::string fileName);
     ~DataCube();
     void readInData();
     void readRawFile();

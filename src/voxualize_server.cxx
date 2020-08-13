@@ -57,6 +57,8 @@ using voxualize::DataModel;
 using voxualize::FilesRequest;
 using voxualize::FilesList;
 using voxualize::CameraInfo;
+using voxualize::DimensionDetailsRequest;
+using voxualize::DimensionDetails;
 
 int renderFullModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
@@ -225,11 +227,12 @@ int renderLODModelOnServer(DataCube *dataCube){
 }
 
 class GreeterServiceImpl final : public Greeter::Service {
+  DataCube dataCube;
   // Service to return the data of a specified file. 
   Status ChooseFile(ServerContext *context, const FileDetails *request,
                   ServerWriter<DataModel> *writer) override {
     std::string file_name(request->file_name());
-    DataCube dataCube(file_name);
+    dataCube.createCube(file_name);
     //renderFullModelOnServer(&dataCube); // For testing.
 
     // TO DOs:
@@ -237,14 +240,14 @@ class GreeterServiceImpl final : public Greeter::Service {
     // compression
 
     // return full array in response as bytes
-    streamFullModel(writer, &dataCube);
+    //streamFullModel(writer, &dataCube);
 
     // Or return LOD of array in response as bytes
     //dataCube.generateLODModel();
 
     //renderLODModelOnServer(&dataCube); //For testing.
 
-    //streamLODModel(writer, &dataCube);
+    streamLODModel(writer, &dataCube);
     return Status::OK;
   }
 
@@ -267,6 +270,25 @@ class GreeterServiceImpl final : public Greeter::Service {
     std::cout<<"Focal Point: " << focal_point.Get(0) <<' ' << focal_point.Get(1) << ' ' <<focal_point.Get(2) << std::endl;
     
     return Status::OK;    
+  }
+
+  Status GetDimensionDetails(ServerContext *context, const DimensionDetailsRequest *request,
+                            DimensionDetails *reply) override {
+    // The LOD model's dimensions
+    reply->add_dimensions_lod(dataCube.new_dim_x);
+    reply->add_dimensions_lod(dataCube.new_dim_y);
+    reply->add_dimensions_lod(dataCube.new_dim_z);
+    // The full model's dimensions
+    reply->add_dimensions_original(dataCube.dimx);
+    reply->add_dimensions_original(dataCube.dimy);
+    reply->add_dimensions_original(dataCube.dimz);
+    // The reduction factors of each dimension. This could be calculated from the previous two set's
+    // of values, but this is for convenience.
+    reply->add_reduction_factors(dataCube.x_scale_factor);
+    reply->add_reduction_factors(dataCube.y_scale_factor);
+    reply->add_reduction_factors(dataCube.z_scale_factor);
+
+    return Status::OK;
   }
 
   // Function which receives a path to a directory and a pointer to the FilesList reply.
