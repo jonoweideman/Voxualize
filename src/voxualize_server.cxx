@@ -57,7 +57,7 @@ using voxualize::DataModel;
 using voxualize::FilesRequest;
 using voxualize::FilesList;
 using voxualize::CameraInfo;
-using voxualize::DimensionDetailsRequest;
+using voxualize::Dummy;
 using voxualize::DimensionDetails;
 
 int renderFullModelOnServer(DataCube *dataCube){
@@ -230,24 +230,28 @@ class GreeterServiceImpl final : public Greeter::Service {
   DataCube dataCube;
   // Service to return the data of a specified file. 
   Status ChooseFile(ServerContext *context, const FileDetails *request,
-                  ServerWriter<DataModel> *writer) override {
+                  DimensionDetails *reply) override {
     std::string file_name(request->file_name());
     dataCube.createCube(file_name);
-    //renderFullModelOnServer(&dataCube); // For testing.
+    
+    // The LOD model's dimensions
+    DataCube *dc = &dataCube;
+    reply->add_dimensions_lod(dc->new_dim_x);
+    reply->add_dimensions_lod(dc->new_dim_y);
+    reply->add_dimensions_lod(dc->new_dim_z);
+    std::cout<<reply->dimensions_lod(0) << ' ' << reply->dimensions_lod(1) << ' ' << reply->dimensions_lod(2)<< std::endl;
 
-    // TO DOs:
+    // The full model's dimensions
+    reply->add_dimensions_original(dc->dimx);
+    reply->add_dimensions_original(dc->dimy);
+    reply->add_dimensions_original(dc->dimz);
+    std::cout<<reply->dimensions_original(0) << ' ' << reply->dimensions_original(1) << ' ' << reply->dimensions_original(2)<< std::endl;
+    // The reduction factors of each dimension. This could be calculated from the previous two set's
+    // of values, but this is for convenience.
+    reply->add_reduction_factors(dc->x_scale_factor);
+    reply->add_reduction_factors(dc->y_scale_factor);
+    reply->add_reduction_factors(dc->z_scale_factor);
 
-    // compression
-
-    // return full array in response as bytes
-    //streamFullModel(writer, &dataCube);
-
-    // Or return LOD of array in response as bytes
-    //dataCube.generateLODModel();
-
-    //renderLODModelOnServer(&dataCube); //For testing.
-
-    streamLODModel(writer, &dataCube);
     return Status::OK;
   }
 
@@ -272,21 +276,23 @@ class GreeterServiceImpl final : public Greeter::Service {
     return Status::OK;    
   }
 
-  Status GetDimensionDetails(ServerContext *context, const DimensionDetailsRequest *request,
-                            DimensionDetails *reply) override {
-    // The LOD model's dimensions
-    reply->add_dimensions_lod(dataCube.new_dim_x);
-    reply->add_dimensions_lod(dataCube.new_dim_y);
-    reply->add_dimensions_lod(dataCube.new_dim_z);
-    // The full model's dimensions
-    reply->add_dimensions_original(dataCube.dimx);
-    reply->add_dimensions_original(dataCube.dimy);
-    reply->add_dimensions_original(dataCube.dimz);
-    // The reduction factors of each dimension. This could be calculated from the previous two set's
-    // of values, but this is for convenience.
-    reply->add_reduction_factors(dataCube.x_scale_factor);
-    reply->add_reduction_factors(dataCube.y_scale_factor);
-    reply->add_reduction_factors(dataCube.z_scale_factor);
+  Status GetModelData(ServerContext *context, const Dummy *request,
+                            ServerWriter<DataModel> *writer) override {
+    //renderFullModelOnServer(&dataCube); // For testing.
+    
+    // TO DOs:
+
+    // compression
+
+    // return full array in response as bytes
+    //streamFullModel(writer, &dataCube);
+
+    // Or return LOD of array in response as bytes
+    //dataCube.generateLODModel();
+
+    //renderLODModelOnServer(&dataCube); //For testing.
+
+    streamLODModel(writer, &dataCube);
 
     return Status::OK;
   }
