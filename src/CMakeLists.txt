@@ -30,9 +30,9 @@ endif()
 find_package(Boost 1.73.0 COMPONENTS system filesystem REQUIRED)
 
 find_package(Threads REQUIRED)
-
 find_package(VTK COMPONENTS
         vtkCommonCore
+        vtkCommonColor
         vtkCommonDataModel
         vtkIOXML
         vtkImagingCore
@@ -42,6 +42,9 @@ find_package(VTK COMPONENTS
         vtkRenderingFreeType
         vtkRenderingOpenGL2
         vtkRenderingVolumeOpenGL2 QUIET)
+
+
+
 if(GRPC_AS_SUBMODULE)
   # One way to build a projects that uses gRPC is to just include the
   # entire gRPC project tree via "add_subdirectory".
@@ -156,12 +159,22 @@ add_custom_command(
         "${vox_proto}"
       DEPENDS "${vox_proto}")
 
-# Include generated *.pb.h files
-include_directories("${CMAKE_CURRENT_BINARY_DIR}" ../include)
 
-# Targets voxualize_[async_](client|server)
+# set(AVUTIL_LIBRARY "/home/jonathan/ffmpeg_build/lib/libavutil.a")
+# set(AVCODEC_LIBRARY "/home/jonathan/ffmpeg_build/lib/libavcodec.a")
+
+# Include generated *.pb.h files
+#include_directories("${CMAKE_CURRENT_BINARY_DIR}" ${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR} ../include)
+include_directories("${CMAKE_CURRENT_BINARY_DIR}" ../include ~/ffmpeg_build/include)
 include(${VTK_USE_FILE})
+
+# set(VTK_USE_OFFSCREEN_EGL​=True)
+
+#set(VTK_DIR "~/VTK-9.0.1/")
+# Targets voxualize_[async_](client|server)
+# include("${VTK_INSTALL_PREFIX}/lib/vtk-9.0")
 file(GLOB SOURCES "../src/*.cxx")
+
 
 foreach(_target
   voxualize_server)
@@ -174,6 +187,7 @@ foreach(_target
     ${VTK_LIBRARIES}
     ${_PROTOBUF_LIBPROTOBUF}
     ${Boost_FILESYSTEM_LIBRARY}
-   ${Boost_SYSTEM_LIBRARY})
- 
+    ${Boost_SYSTEM_LIBRARY}
+    "/usr/lib/x86_64-linux-gnu/libavcodec.so.58"
+    "/usr/lib/x86_64-linux-gnu/libavutil.so.56")
 endforeach()
