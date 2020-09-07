@@ -10,6 +10,7 @@ extern "C" {
 
   #include <libavutil/opt.h>
   #include <libavutil/imgutils.h>
+  #include <libswscale/swscale.h>
 }
 
 #include <vtkCamera.h>
@@ -103,9 +104,13 @@ int renderFullModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkRenderer> ren1 =
       vtkSmartPointer<vtkRenderer>::New();
 
-  vtkSmartPointer<vtkEGLRenderWindow> renWin =
-      vtkSmartPointer<vtkEGLRenderWindow>::New();
+  vtkSmartPointer<vtkRenderWindow> renWin =
+      vtkSmartPointer<vtkRenderWindow>::New();
   renWin->AddRenderer(ren1);
+
+  vtkSmartPointer<vtkRenderWindowInteractor> iren =
+      vtkSmartPointer<vtkRenderWindowInteractor>::New();
+  iren->SetRenderWindow(renWin);
 
   // Create transfer mapping scalar value to opacity
   // Data values for ds9.arr 540x450x201 are in range [-0.139794;0.153026]
@@ -146,11 +151,12 @@ int renderFullModelOnServer(DataCube *dataCube){
   ren1->ResetCamera();
 
   renWin->SetSize(600, 600);
-  std::cout << "11"<<std::endl;
   renWin->Render();
-  std::cout << "22"<<std::endl;
 
-  
+  iren->Start();
+
+  return EXIT_SUCCESS;
+}
   // ------------------------- Codec stuff ----------------------------
   
 
@@ -186,8 +192,8 @@ int renderFullModelOnServer(DataCube *dataCube){
   // writer2->SetFileName("screenshot2.png");
   // writer2->Write();
 
-  return EXIT_SUCCESS;
-}
+//   return EXIT_SUCCESS;
+// }
 
 int renderLODModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
@@ -267,6 +273,7 @@ int renderLODModelOnServer(DataCube *dataCube){
   renWin->SetSize(600, 600);
   renWin->Render();
 
+  cout << "Helloooo" << endl;
   iren->Start();
 
   return EXIT_SUCCESS;
@@ -287,6 +294,9 @@ class GreeterServiceImpl final : public Greeter::Service {
   vtkSmartPointer<vtkColorTransferFunction> colorTransferFunction;
   vtkSmartPointer<vtkVolumeProperty> volumeProperty;
   vtkSmartPointer<vtkVolume> volume;
+  vtkSmartPointer<vtkRenderWindowInteractor> iren;
+
+  vtkSmartPointer<vtkImageData> imageData;
 
   long num_bytes;
 
@@ -301,13 +311,13 @@ class GreeterServiceImpl final : public Greeter::Service {
     reply->add_dimensions_lod(dc->new_dim_x);
     reply->add_dimensions_lod(dc->new_dim_y);
     reply->add_dimensions_lod(dc->new_dim_z);
-    std::cout<<reply->dimensions_lod(0) << ' ' << reply->dimensions_lod(1) << ' ' << reply->dimensions_lod(2)<< std::endl;
+    //std::cout<<reply->dimensions_lod(0) << ' ' << reply->dimensions_lod(1) << ' ' << reply->dimensions_lod(2)<< std::endl;
 
     // The full model's dimensions
     reply->add_dimensions_original(dc->dimx);
     reply->add_dimensions_original(dc->dimy);
     reply->add_dimensions_original(dc->dimz);
-    std::cout<<reply->dimensions_original(0) << ' ' << reply->dimensions_original(1) << ' ' << reply->dimensions_original(2)<< std::endl;
+    //std::cout<<reply->dimensions_original(0) << ' ' << reply->dimensions_original(1) << ' ' << reply->dimensions_original(2)<< std::endl;
     // The reduction factors of each dimension. This could be calculated from the previous two set's
     // of values, but this is for convenience.
     reply->add_reduction_factors(dc->x_scale_factor);
@@ -329,35 +339,44 @@ class GreeterServiceImpl final : public Greeter::Service {
   Status GetHighQualityRender(ServerContext *context, const CameraInfo *request,
                             ServerWriter<DataModel> *writer) override {
     //For now, log the camera info.
-    const google::protobuf::RepeatedField<float> position = request->position();
-    std::cout<<"Position: " << position.Get(0) <<' ' << position.Get(1) << ' ' <<position.Get(2) << std::endl;
+    // const google::protobuf::RepeatedField<float> position = request->position();
+    // std::cout<<"Position: " << position.Get(0) <<' ' << position.Get(1) << ' ' <<position.Get(2) << std::endl;
 
-    const google::protobuf::RepeatedField<float> focal_point = request->focal_point();
-    std::cout<<"Focal Point: " << focal_point.Get(0) <<' ' << focal_point.Get(1) << ' ' <<focal_point.Get(2) << std::endl;
+    // const google::protobuf::RepeatedField<float> focal_point = request->focal_point();
+    // std::cout<<"Focal Point: " << focal_point.Get(0) <<' ' << focal_point.Get(1) << ' ' <<focal_point.Get(2) << std::endl;
     
     // Get pointer to data?
-    float * pixelData = updateCameraAndGetData(request);
+    float * pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
+    // for (int i =0; i< 300; i++){
+    //   std::cout << pixelData[i] << std::endl;
+    // }
+    
     
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
     unsigned char * encodedData = encodePixelData(pixelData, request);
-
+/*
     // Write to message ?
     // return a stream.
     char * bytes = reinterpret_cast<char*>(encodedData);
-
+    
     //bytes_per_write = 64*64*64; // Performance tests to be run on this.
+    */
+    int num_bytes_tmp  = 600*4*600*4;
+    cout << "Starting to write encoded frame to stream: " << bytes_per_write  << endl;
     DataModel d;
-    for (int i = 0; i < num_bytes; i += bytes_per_write){
-      if ( num_bytes - i < bytes_per_write){
-        d.set_bytes(bytes, num_bytes - i);
-        d.set_num_bytes(num_bytes - i);
+    for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
+      if ( num_bytes_tmp - i < bytes_per_write){
+        d.set_bytes(encodedData, num_bytes_tmp - i);
+        d.set_num_bytes(num_bytes_tmp - i);
       } else {
-        d.set_bytes(bytes, bytes_per_write);
+        d.set_bytes(encodedData, bytes_per_write);
         d.set_num_bytes(bytes_per_write);
       }
       writer->Write(d);
-      bytes += bytes_per_write; // Update the pointer.
+      encodedData += bytes_per_write; // Update the pointer.
     }
+    
+    cout << "Finished GetHighQualityRender rpc" << endl;
     return Status::OK;    
   }
 
@@ -378,7 +397,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     //renderLODModelOnServer(&dataCube); //For testing.
     streamLODModel(writer, &dataCube);
 
+    cout << "Creating EGL render on server" << endl;
     createEGLRenderOnServer(); // Backend HQ render
+    cout << "Finished EGL rener on server? " << endl;
 
     return Status::OK;
   }
@@ -410,7 +431,11 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1 = vtkSmartPointer<vtkRenderer>::New();
 
     renWin = vtkSmartPointer<vtkEGLRenderWindow>::New();
+    renWin->Initialize();
     renWin->AddRenderer(ren1);
+
+    // iren = vtkSmartPointer<vtkRenderWindowInteractor>::New();
+    // iren->SetRenderWindow(renWin);
 
     // Create transfer mapping scalar value to opacity
     // Data values for ds9.arr 540x450x201 are in range [-0.139794;0.153026]
@@ -447,7 +472,12 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->ResetCamera();
 
     renWin->SetSize(600, 600);
-    renWin->Render();
+    //renWin->Render();
+
+    //cout << "Attempting to start render on server" << endl;
+    //iren->Start();
+    //renderLODModelOnServer(&dataCube);
+
 
     return;
   }
@@ -455,21 +485,92 @@ class GreeterServiceImpl final : public Greeter::Service {
   // Get's the pixel data (pointer to it) from the current render on the backend.
   // Also uses information from the request to update the cameras position, get resolution, etc.
   float * updateCameraAndGetData(const CameraInfo *request){
+    // renWin->Finalize();
+    // renWin->WaitForCompletion();
+    // cout << "FFFFF" << endl;
+    // renWin->Initialize();
+    // cout << "GGGGG" << endl;
+    // renWin->WaitForCompletion();
     const google::protobuf::RepeatedField<float> position = request->position();
     const google::protobuf::RepeatedField<float> focal_point = request->focal_point();
+    const google::protobuf::RepeatedField<float> view_up = request->view_up();
+    const double distance = request->distance();
+    //vtkSmartPointer<vtkRenderWindow> renW = &(*renWin);
+    // renWin->Frame();
+    // renWin->WaitForCompletion();
     ren1->GetActiveCamera()->SetPosition(position.Get(0),position.Get(1),position.Get(2));
-    ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
+    ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
+    //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
+    cout << "AAAAA" << endl;
+    //createEGLRenderOnServer();
+    renWin->Render();
+    renWin->WaitForCompletion();
+    cout << "BBBBB" << endl;
+    //renWin->CopyResultFrame();
+    cout << "CCCCC" << endl;
+    cout << position.Get(0) << ' ' << position.Get(1) << ' ' << position.Get(2) << endl;
+    //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
+    //renWin->AddRenderer(ren1);
+    //renWin->SetSize(600, 600);
+    //renWin->Render();
 
-    return renWin->GetRGBAPixelData(0,0,599,599,0);
-    //return renWind->GetPixelData(0,0,599,599,0); //Need to experiement
+    //renWin->WaitForCompletion();
+    cout << "DDDDD" << endl;
+    //return renWin->GetRGBAPixelData(0,0,599,599,0);
+    // std::cout <<"renWin->GetScreenSize(): " << *(renWin->GetScreenSize()) << std::endl;
+    int width, height;
+    // renWin->GetEGLSurfaceSize(&width, &height);
+    // std::cout<< "EGL Surface Size Width: " << width << std::endl;
+    // std::cout<< "EGL Surface Size Height: " << height << std::endl;
+
+    vtkSmartPointer<vtkWindowToImageFilter> windowToImageFilter = 
+      vtkSmartPointer<vtkWindowToImageFilter>::New();
+    windowToImageFilter->SetInput(renWin);
+    windowToImageFilter->SetInputBufferTypeToRGBA(); //also record the alpha (transparency) channel
+    windowToImageFilter->ReadFrontBufferOff(); // read from the back buffer
+    windowToImageFilter->Update();
+    
+    vtkSmartPointer<vtkPNGWriter> writer1 = 
+      vtkSmartPointer<vtkPNGWriter>::New();
+    writer1->SetFileName("screenshot1.png");
+    writer1->SetInputConnection(windowToImageFilter->GetOutputPort());
+    writer1->Write();
+
+    imageData = windowToImageFilter->GetOutput();
+    float * data = renWin->GetRGBAPixelData(0,0,599,599,0,0);
+    int* dims = imageData->GetDimensions();
+    cout << "EEEEE" << endl;
+    
+    //createEGLRenderOnServer();
+    // int dims[3]; // can't do this
+
+    std::cout << "Dims: " << " x: " << dims[0] << " y: " << dims[1] << " z: " << dims[2] << std::endl;
+    cout << "Scalar size: " << imageData->GetScalarSize() << endl;
+
+    //unsigned char * pointer = static_cast<unsigned char *>(imageData->GetScalarPointer(0,0,0));
+
+    std::cout << "Number of points: " << imageData->GetNumberOfPoints() << std::endl;
+    std::cout << "Number of cells: " << imageData->GetNumberOfCells() << std::endl;
+    // for(int x = 0; x< dims[0]; x++){
+    //   for (int y=0; y<dims[1]; y++){
+    //     for (int z=0; z<dims[2]; z++){
+    //       if (*data != 0){
+    //         cout << *data << ' ';
+    //       }
+    //       data++;
+    //     }
+    //   }
+    // }
+    return data; //Need to experiement
   }
   
   // Encode the data. For now using ffmpeg. Hopefully in future done using GPU acceleration.
-  unsigned char * encodePixelData(float *pixelData, const CameraInfo *request){
+  unsigned char * encodePixelData(float *pixelData, const CameraInfo *request){\
+    cout << "Attempting to encode" << endl;
     const AVCodec *codec;
     AVCodecContext *c= NULL;
-    int i, ret, x, y;
-    const char *filename, *codec_name = "libx264";
+    int i, ret, x, y, got_output;
+    const char *codec_name = "libx264";
     AVFrame *frame;
     AVPacket *pkt;
 
@@ -518,61 +619,119 @@ class GreeterServiceImpl final : public Greeter::Service {
           fprintf(stderr, "Could not allocate video frame\n");
           exit(1);
       }
-    std::cout << frame->linesize[0] << std::endl;
-    std::cout << frame->linesize[1] << std::endl;
-    std::cout << frame->linesize[2] << std::endl;
 
     frame->format = c->pix_fmt;
     frame->width  = c->width;
     frame->height = c->height;
 
-    std::cout << frame->linesize[0] << std::endl;
-    std::cout << frame->linesize[1] << std::endl;
-    std::cout << frame->linesize[2] << std::endl;
-    
-
-    ret = av_frame_get_buffer(frame, 0);
+    /* the image can be allocated by any means and av_image_alloc() is
+     * just the most convenient way if av_malloc() is to be used */
+    ret = av_image_alloc(frame->data, frame->linesize, c->width, c->height,
+                         c->pix_fmt, 32);
     if (ret < 0) {
-      fprintf(stderr, "Could not allocate the video frame data\n");
-      exit(1);
+        fprintf(stderr, "Could not allocate raw picture buffer\n");
+        exit(6);
     }
 
-    /* make sure the frame data is writable */
-    ret = av_frame_make_writable(frame);
-    if (ret < 0)
-      exit(1);
+    uint8_t *rgba32Data = reinterpret_cast<uint8_t*>(pixelData);
     
-    frame->data[0] = reinterpret_cast<uint8_t*>(pixelData);
-    frame->pts = 0; // only one frame
+    SwsContext * ctx = sws_getContext(c->width, c->height,
+                                      AV_PIX_FMT_RGBA, c->width, c->height,
+                                      AV_PIX_FMT_YUV420P, 0, 0, 0, 0);
+
+    av_init_packet(pkt);
+    pkt->data = NULL;    // packet data will be allocated by the encoder
+    pkt->size = 0;
+
+    uint8_t * inData[1] = { rgba32Data }; // RGBA32 have one plane
+
+    int inLinesize[1] = { 4*c->width }; // RGBA stride
+
+    sws_scale(ctx, inData, inLinesize, 0, c->height, frame->data, frame->linesize);
+    
+    frame->pts = i;
 
     /* encode the image */
-    encode(c, frame, pkt);
+    ret = avcodec_encode_video2(c, pkt, frame, &got_output);
+    if (ret < 0) {
+        fprintf(stderr, "Error encoding frame\n");
+        exit(7);
+    }
+
+
+    //-------------------------------------------------------
+
+    // ret = av_frame_get_buffer(frame, 0);
+    // if (ret < 0) {
+    //   fprintf(stderr, "Could not allocate the video frame data\n");
+    //   exit(1);
+    // }
+
+    /* make sure the frame data is writable */
+    // ret = av_frame_make_writable(frame);
+    // if (ret < 0)
+    //   exit(1);
     
-    num_bytes = pkt->size;
-    std::cout << num_bytes << std::endl;
-    std::cout << frame->linesize[0]*frame->height << std::endl;
+    // // frame->data[0] = reinterpret_cast<uint8_t*>(pixelData);
+    // // frame->pts = 0; // only one frame
+
+    // /* encode the image */
+    // encode(c, frame, pkt, codec);
+    
+    // num_bytes = pkt->size;
+    // //std::cout << "num_bytes: " << num_bytes << std::endl;
+    // //std::cout << "frame->linesize[0]*frame->height: " << frame->linesize[0]*frame->height << std::endl;
+
+    // avcodec_free_context(&c);
+    // av_frame_free(&frame);
+    // av_packet_free(&pkt);
+
     return pkt->data;
   }
 
-  void encode(AVCodecContext* c, AVFrame* frame, AVPacket* pkt){
+  void encode(AVCodecContext* c, AVFrame* frame, AVPacket* pkt, const AVCodec *codec){
     int ret = avcodec_send_frame(c, frame);
     if (ret < 0) {
       fprintf(stderr, "Error sending a frame for encoding\n");
       exit(1);
     }
-
+    cout << "Hello1" << endl;
+    // ---- File stuff ---
+    FILE *f;
+    const char *filename = "outfile.mkv";
+    f = fopen(filename, "wb");
+    cout << "Hello2" << endl;
+    uint8_t endcode[] = { 0, 0, 1, 0xb7 };
+    cout << "Hell3" << endl;
+    if (!f) {
+        fprintf(stderr, "Could not open %s\n", filename);
+        exit(1);
+    }
+    // -------------------
+    cout << "Hello4" << endl;
     while (ret >= 0) {
+      cout << "Hello5" << endl;
       ret = avcodec_receive_packet(c, pkt);
+      cout << "Hello6" << endl;
       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
         return;
       else if (ret < 0) {
         fprintf(stderr, "Error during encoding\n");
         exit(1);
       }
-
+      cout << "Hello" << endl;
       printf("Write packet %3"PRId64" (size=%5d)\n", pkt->pts, pkt->size);
+      cout << "Hello" << endl;
+      fwrite(pkt->data, 1, pkt->size, f); //file stuff
+      cout << "Hello" << endl;
       av_packet_unref(pkt);
+      cout << "Hello" << endl;
     }
+
+    /* add sequence end code to have a real MPEG file */
+    // if (codec->id == AV_CODEC_ID_MPEG1VIDEO || codec->id == AV_CODEC_ID_MPEG2VIDEO)
+    //     fwrite(endcode, 1, sizeof(endcode), f);
+    fclose(f);
   }
 
   // Function which receives a path to a directory and a pointer to the FilesList reply.
@@ -663,7 +822,7 @@ int main(int argc, char *argv[])
 {
   // DataCube dataCube;
   // dataCube.createCube("ds9.arr");
-  // renderFullModelOnServer(&dataCube);
+  // renderLODModelOnServer(&dataCube);
   RunServer();
   return 0;
 }
