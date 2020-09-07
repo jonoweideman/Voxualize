@@ -298,6 +298,8 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   vtkSmartPointer<vtkImageData> imageData;
 
+  AVPacket encodedFramePkt;
+
   long num_bytes;
 
   // Service to return the data of a specified file. 
@@ -338,30 +340,15 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   Status GetHighQualityRender(ServerContext *context, const CameraInfo *request,
                             ServerWriter<DataModel> *writer) override {
-    //For now, log the camera info.
-    // const google::protobuf::RepeatedField<float> position = request->position();
-    // std::cout<<"Position: " << position.Get(0) <<' ' << position.Get(1) << ' ' <<position.Get(2) << std::endl;
-
-    // const google::protobuf::RepeatedField<float> focal_point = request->focal_point();
-    // std::cout<<"Focal Point: " << focal_point.Get(0) <<' ' << focal_point.Get(1) << ' ' <<focal_point.Get(2) << std::endl;
-    
-    // Get pointer to data?
-    float * pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
-    // for (int i =0; i< 300; i++){
-    //   std::cout << pixelData[i] << std::endl;
-    // }
+    // Get pointer to data.
+    unsigned char * pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
     
     
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
-    unsigned char * encodedData = encodePixelData(pixelData, request);
-/*
-    // Write to message ?
+    AVPacket * pkt = encodePixelData(pixelData, request);
+    unsigned char * encodedData = pkt->data;
+    int num_bytes_tmp  = pkt->size;
     // return a stream.
-    char * bytes = reinterpret_cast<char*>(encodedData);
-    
-    //bytes_per_write = 64*64*64; // Performance tests to be run on this.
-    */
-    int num_bytes_tmp  = 600*4*600*4;
     cout << "Starting to write encoded frame to stream: " << bytes_per_write  << endl;
     DataModel d;
     for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
@@ -386,25 +373,22 @@ class GreeterServiceImpl final : public Greeter::Service {
     
     // TO DOs:
 
-    // compression
+    // compression of LOD model
 
     // return full array in response as bytes
     //streamFullModel(writer, &dataCube);
 
-    // Or return LOD of array in response as bytes
-    //dataCube.generateLODModel();
-
-    //renderLODModelOnServer(&dataCube); //For testing.
+    // Or return LOD model as bytes
     streamLODModel(writer, &dataCube);
 
-    cout << "Creating EGL render on server" << endl;
-    createEGLRenderOnServer(); // Backend HQ render
-    cout << "Finished EGL rener on server? " << endl;
+    // Backend HQ render to capture screenshots requested by client.
+    createEGLRenderOnServer();
 
     return Status::OK;
   }
 
   void createEGLRenderOnServer(){
+    cout << "Creating EGL render on server." << endl;
     floatArray = vtkSmartPointer<vtkFloatArray>::New();
     floatArray->SetName("Float Array");
     floatArray->SetArray(dataCube.floatArray, dataCube.num_pixels, 1);
@@ -434,28 +418,21 @@ class GreeterServiceImpl final : public Greeter::Service {
     renWin->Initialize();
     renWin->AddRenderer(ren1);
 
-    // iren = vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    // iren->SetRenderWindow(renWin);
-
     // Create transfer mapping scalar value to opacity
     // Data values for ds9.arr 540x450x201 are in range [-0.139794;0.153026]
     opacityTransferFunction = vtkSmartPointer<vtkPiecewiseFunction>::New();
-    //opacityTransferFunction->AddPoint(-0.14, 0.0);
     opacityTransferFunction->AddPoint(-0.0, 0.0);
     opacityTransferFunction->AddPoint(0.16, 1.0);
 
     // Create transfer mapping scalar value to color
     colorTransferFunction = vtkSmartPointer<vtkColorTransferFunction>::New();
-    //colorTransferFunction->AddRGBPoint(-0.14, 0.0, 0.0, 0.0);
     colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
     colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
-    //colorTransferFunction->AddRGBPoint(0.16, 1.0, 0.0, 0.7);
 
     // The property describes how the data will look
     volumeProperty = vtkSmartPointer<vtkVolumeProperty>::New();
     volumeProperty->SetColor(colorTransferFunction);
     volumeProperty->SetScalarOpacity(opacityTransferFunction);
-    //volumeProperty->ShadeOn();
     volumeProperty->SetInterpolationTypeToNearest();
 
     // The volume holds the mapper and the property and
@@ -472,56 +449,27 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->ResetCamera();
 
     renWin->SetSize(600, 600);
-    //renWin->Render();
 
-    //cout << "Attempting to start render on server" << endl;
-    //iren->Start();
-    //renderLODModelOnServer(&dataCube);
-
-
+    cout << "Finished setting up EGL render on server." << endl;
     return;
   }
 
   // Get's the pixel data (pointer to it) from the current render on the backend.
   // Also uses information from the request to update the cameras position, get resolution, etc.
-  float * updateCameraAndGetData(const CameraInfo *request){
-    // renWin->Finalize();
-    // renWin->WaitForCompletion();
-    // cout << "FFFFF" << endl;
-    // renWin->Initialize();
-    // cout << "GGGGG" << endl;
-    // renWin->WaitForCompletion();
+  unsigned char * updateCameraAndGetData(const CameraInfo *request){
     const google::protobuf::RepeatedField<float> position = request->position();
     const google::protobuf::RepeatedField<float> focal_point = request->focal_point();
     const google::protobuf::RepeatedField<float> view_up = request->view_up();
     const double distance = request->distance();
-    //vtkSmartPointer<vtkRenderWindow> renW = &(*renWin);
-    // renWin->Frame();
-    // renWin->WaitForCompletion();
+
     ren1->GetActiveCamera()->SetPosition(position.Get(0),position.Get(1),position.Get(2));
     ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
     //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
-    cout << "AAAAA" << endl;
-    //createEGLRenderOnServer();
+
     renWin->Render();
     renWin->WaitForCompletion();
-    cout << "BBBBB" << endl;
-    //renWin->CopyResultFrame();
-    cout << "CCCCC" << endl;
-    cout << position.Get(0) << ' ' << position.Get(1) << ' ' << position.Get(2) << endl;
-    //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
-    //renWin->AddRenderer(ren1);
-    //renWin->SetSize(600, 600);
-    //renWin->Render();
 
-    //renWin->WaitForCompletion();
-    cout << "DDDDD" << endl;
-    //return renWin->GetRGBAPixelData(0,0,599,599,0);
-    // std::cout <<"renWin->GetScreenSize(): " << *(renWin->GetScreenSize()) << std::endl;
-    int width, height;
-    // renWin->GetEGLSurfaceSize(&width, &height);
-    // std::cout<< "EGL Surface Size Width: " << width << std::endl;
-    // std::cout<< "EGL Surface Size Height: " << height << std::endl;
+    captureScreenShotOfCurrentEGLRender();
 
     vtkSmartPointer<vtkWindowToImageFilter> windowToImageFilter = 
       vtkSmartPointer<vtkWindowToImageFilter>::New();
@@ -529,50 +477,26 @@ class GreeterServiceImpl final : public Greeter::Service {
     windowToImageFilter->SetInputBufferTypeToRGBA(); //also record the alpha (transparency) channel
     windowToImageFilter->ReadFrontBufferOff(); // read from the back buffer
     windowToImageFilter->Update();
-    
-    vtkSmartPointer<vtkPNGWriter> writer1 = 
-      vtkSmartPointer<vtkPNGWriter>::New();
-    writer1->SetFileName("screenshot1.png");
-    writer1->SetInputConnection(windowToImageFilter->GetOutputPort());
-    writer1->Write();
 
     imageData = windowToImageFilter->GetOutput();
-    float * data = renWin->GetRGBAPixelData(0,0,599,599,0,0);
+
     int* dims = imageData->GetDimensions();
-    cout << "EEEEE" << endl;
-    
-    //createEGLRenderOnServer();
-    // int dims[3]; // can't do this
-
     std::cout << "Dims: " << " x: " << dims[0] << " y: " << dims[1] << " z: " << dims[2] << std::endl;
-    cout << "Scalar size: " << imageData->GetScalarSize() << endl;
 
-    //unsigned char * pointer = static_cast<unsigned char *>(imageData->GetScalarPointer(0,0,0));
+    unsigned char * pointer = static_cast<unsigned char *>(imageData->GetScalarPointer(0,0,0));
 
-    std::cout << "Number of points: " << imageData->GetNumberOfPoints() << std::endl;
-    std::cout << "Number of cells: " << imageData->GetNumberOfCells() << std::endl;
-    // for(int x = 0; x< dims[0]; x++){
-    //   for (int y=0; y<dims[1]; y++){
-    //     for (int z=0; z<dims[2]; z++){
-    //       if (*data != 0){
-    //         cout << *data << ' ';
-    //       }
-    //       data++;
-    //     }
-    //   }
-    // }
-    return data; //Need to experiement
+    return pointer;
   }
   
   // Encode the data. For now using ffmpeg. Hopefully in future done using GPU acceleration.
-  unsigned char * encodePixelData(float *pixelData, const CameraInfo *request){\
+  AVPacket * encodePixelData(unsigned char *pixelData, const CameraInfo *request){\
     cout << "Attempting to encode" << endl;
     const AVCodec *codec;
     AVCodecContext *c= NULL;
     int i, ret, x, y, got_output;
     const char *codec_name = "libx264";
     AVFrame *frame;
-    AVPacket *pkt;
+    AVPacket *pkt = &encodedFramePkt;
 
     codec = avcodec_find_encoder_by_name(codec_name);
 
@@ -587,10 +511,6 @@ class GreeterServiceImpl final : public Greeter::Service {
       exit(1);
     }
 
-    pkt = av_packet_alloc();
-    if (!pkt)
-      exit(1);
-    
     /* put sample parameters */
     c->bit_rate = 400000;
     /* resolution must be a multiple of two */
@@ -598,7 +518,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     c->height = 600;
     /* frames per second */
     c->time_base = (AVRational){1, 1};
-    c->framerate = (AVRational){1, 1};
+    //c->framerate = (AVRational){1, 1};
 
     c->gop_size = 0; //Intra only - meaning the pictures should be constructed only from information
                       // within that picture, and not any other pictures.
@@ -643,6 +563,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     pkt->data = NULL;    // packet data will be allocated by the encoder
     pkt->size = 0;
 
+    fflush(stdout);
+
     uint8_t * inData[1] = { rgba32Data }; // RGBA32 have one plane
 
     int inLinesize[1] = { 4*c->width }; // RGBA stride
@@ -658,80 +580,61 @@ class GreeterServiceImpl final : public Greeter::Service {
         exit(7);
     }
 
-
-    //-------------------------------------------------------
-
-    // ret = av_frame_get_buffer(frame, 0);
-    // if (ret < 0) {
-    //   fprintf(stderr, "Could not allocate the video frame data\n");
-    //   exit(1);
-    // }
-
-    /* make sure the frame data is writable */
-    // ret = av_frame_make_writable(frame);
-    // if (ret < 0)
-    //   exit(1);
-    
-    // // frame->data[0] = reinterpret_cast<uint8_t*>(pixelData);
-    // // frame->pts = 0; // only one frame
-
-    // /* encode the image */
-    // encode(c, frame, pkt, codec);
-    
-    // num_bytes = pkt->size;
-    // //std::cout << "num_bytes: " << num_bytes << std::endl;
-    // //std::cout << "frame->linesize[0]*frame->height: " << frame->linesize[0]*frame->height << std::endl;
-
-    // avcodec_free_context(&c);
-    // av_frame_free(&frame);
-    // av_packet_free(&pkt);
-
-    return pkt->data;
-  }
-
-  void encode(AVCodecContext* c, AVFrame* frame, AVPacket* pkt, const AVCodec *codec){
-    int ret = avcodec_send_frame(c, frame);
-    if (ret < 0) {
-      fprintf(stderr, "Error sending a frame for encoding\n");
-      exit(1);
-    }
-    cout << "Hello1" << endl;
-    // ---- File stuff ---
     FILE *f;
-    const char *filename = "outfile.mkv";
-    f = fopen(filename, "wb");
-    cout << "Hello2" << endl;
+    const char *filename = "outfile.mpg";
     uint8_t endcode[] = { 0, 0, 1, 0xb7 };
-    cout << "Hell3" << endl;
+    f = fopen(filename, "wb");
+    i = 0;
     if (!f) {
-        fprintf(stderr, "Could not open %s\n", filename);
-        exit(1);
+      fprintf(stderr, "Could not open %s\n", filename);
+      exit(4);
     }
-    // -------------------
-    cout << "Hello4" << endl;
-    while (ret >= 0) {
-      cout << "Hello5" << endl;
-      ret = avcodec_receive_packet(c, pkt);
-      cout << "Hello6" << endl;
-      if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-        return;
-      else if (ret < 0) {
-        fprintf(stderr, "Error during encoding\n");
-        exit(1);
-      }
-      cout << "Hello" << endl;
-      printf("Write packet %3"PRId64" (size=%5d)\n", pkt->pts, pkt->size);
-      cout << "Hello" << endl;
-      fwrite(pkt->data, 1, pkt->size, f); //file stuff
-      cout << "Hello" << endl;
-      av_packet_unref(pkt);
-      cout << "Hello" << endl;
+    if (got_output) {
+      printf("Write frame %3d (size=%5d)\n", i, pkt->size);
+      fwrite(pkt->data, 1, pkt->size, f);
+      av_free_packet(pkt);
     }
 
-    /* add sequence end code to have a real MPEG file */
-    // if (codec->id == AV_CODEC_ID_MPEG1VIDEO || codec->id == AV_CODEC_ID_MPEG2VIDEO)
-    //     fwrite(endcode, 1, sizeof(endcode), f);
+    for (got_output = 1; got_output; i++) {
+      fflush(stdout);
+      
+      ret = avcodec_encode_video2(c, pkt, NULL, &got_output);
+      if (ret < 0) {
+        fprintf(stderr, "Error encoding frame\n");
+        exit(8);
+      }
+      
+      if (got_output) {
+        printf("Write frame %3d (size=%5d)\n", i, pkt->size);
+        fwrite(pkt->data, 1, pkt->size, f);
+        av_free_packet(pkt);
+      }
+    }
+    /* add sequence end code to have a real mpeg file */
+    fwrite(endcode, 1, sizeof(endcode), f);
     fclose(f);
+
+    avcodec_close(c);
+    av_free(c);
+    av_freep(&frame->data[0]);
+    av_frame_free(&frame);
+
+    return &encodedFramePkt;
+  }
+  
+  void captureScreenShotOfCurrentEGLRender(){
+    vtkSmartPointer<vtkWindowToImageFilter> windowToImageFilter = 
+      vtkSmartPointer<vtkWindowToImageFilter>::New();
+    windowToImageFilter->SetInput(renWin);
+    windowToImageFilter->SetInputBufferTypeToRGBA(); //also record the alpha (transparency) channel
+    windowToImageFilter->ReadFrontBufferOff(); // read from the back buffer
+    windowToImageFilter->Update();
+    
+    vtkSmartPointer<vtkPNGWriter> writer1 = 
+      vtkSmartPointer<vtkPNGWriter>::New();
+    writer1->SetFileName("screenshot1.png");
+    writer1->SetInputConnection(windowToImageFilter->GetOutputPort());
+    writer1->Write();
   }
 
   // Function which receives a path to a directory and a pointer to the FilesList reply.
