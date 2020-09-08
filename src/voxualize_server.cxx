@@ -457,17 +457,30 @@ class GreeterServiceImpl final : public Greeter::Service {
   // Get's the pixel data (pointer to it) from the current render on the backend.
   // Also uses information from the request to update the cameras position, get resolution, etc.
   unsigned char * updateCameraAndGetData(const CameraInfo *request){
+
+    // Get virables
     const google::protobuf::RepeatedField<float> position = request->position();
     const google::protobuf::RepeatedField<float> focal_point = request->focal_point();
     const google::protobuf::RepeatedField<float> view_up = request->view_up();
+    const google::protobuf::RepeatedField<float> rgb = request->rgba();
+    const float alpha = request->alpha();
     const double distance = request->distance();
 
+
+    // Set variables.
     ren1->GetActiveCamera()->SetPosition(position.Get(0),position.Get(1),position.Get(2));
     ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
     //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
+    colorTransferFunction->RemoveAllPoints();
+    colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
+    colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
 
     renWin->Render();
+    //renWin->Frame();
     renWin->WaitForCompletion();
+
+    int oldSB = renWin->GetSwapBuffers();
+    renWin->SwapBuffersOff();
 
     captureScreenShotOfCurrentEGLRender();
 
@@ -477,6 +490,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     windowToImageFilter->SetInputBufferTypeToRGBA(); //also record the alpha (transparency) channel
     windowToImageFilter->ReadFrontBufferOff(); // read from the back buffer
     windowToImageFilter->Update();
+
+    // restore swapping state
+    renWin->SetSwapBuffers(oldSB);
 
     imageData = windowToImageFilter->GetOutput();
 
