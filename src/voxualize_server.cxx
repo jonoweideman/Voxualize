@@ -77,6 +77,7 @@ using voxualize::FilesList;
 using voxualize::CameraInfo;
 using voxualize::Dummy;
 using voxualize::DimensionDetails;
+using voxualize::HQRenderInfo;
 
 int renderFullModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
@@ -341,22 +342,28 @@ class GreeterServiceImpl final : public Greeter::Service {
     return Status::OK;
   }
 
-  Status GetHighQualityRender(ServerContext *context, const CameraInfo *request,
-                            ServerWriter<DataModel> *writer) override {
+  Status GetHQRenderSize(ServerContext *context, const CameraInfo *request,
+                        HQRenderInfo *reply) override {
     // Get pointer to data.
     unsigned char * pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
-    
-    
+
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
     AVPacket * pkt = encodePixelData(pixelData, request);
-    char * encodedData = reinterpret_cast<char *>(pkt->data);
-    int num_bytes_tmp  = pkt->size;
+    reply->set_size_in_bytes(pkt->size);
+    return Status::OK;
+  }
 
-    for (int i = 0; i<100; i+=1){
-      cout << encodedData[i] << ' ';
-      if ((i+1)%4==0)
-        cout << endl;
-    }
+  Status GetHighQualityRender(ServerContext *context, const Dummy *request,
+                            ServerWriter<DataModel> *writer) override {
+
+    char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
+    int num_bytes_tmp  = encodedFramePkt.size;
+
+    // for (int i = 0; i<100; i+=1){
+    //   cout << encodedData[i] << ' ';
+    //   if ((i+1)%4==0)
+    //     cout << endl;
+    // }
 
     // return a stream.
     cout << "Starting to write encoded frame to stream: " << bytes_per_write  << endl;
