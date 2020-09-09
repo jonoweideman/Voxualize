@@ -330,6 +330,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     reply->add_reduction_factors(dc->y_scale_factor);
     reply->add_reduction_factors(dc->z_scale_factor);
 
+    reply->set_lod_num_bytes(dc->LOD_num_bytes);
+
     return Status::OK;
   }
 
