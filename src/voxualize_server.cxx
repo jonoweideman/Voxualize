@@ -426,6 +426,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     volumeMapper = vtkSmartPointer<vtkSmartVolumeMapper>::New();
     volumeMapper->SetBlendModeToComposite(); // composite first
     volumeMapper->SetInputConnection(imageImport->GetOutputPort());
+    volumeMapper->CroppingOn();
 
     // Create the standard renderer, render window
     // and interactor
@@ -488,9 +489,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     const google::protobuf::RepeatedField<float> focal_point = request->focal_point();
     const google::protobuf::RepeatedField<float> view_up = request->view_up();
     const google::protobuf::RepeatedField<float> rgb = request->rgba();
+    const google::protobuf::RepeatedField<float> cplanes = request->cropping_planes();
     const float alpha = request->alpha();
     const double distance = request->distance();
-
 
     // Set variables.
     ren1->ResetCamera();
@@ -501,6 +502,11 @@ class GreeterServiceImpl final : public Greeter::Service {
     colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
     colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
 
+    cout << "Trying to set cropping planes" << endl;
+    volumeMapper->SetCroppingRegionPlanes(cplanes.Get(0)*dataCube.x_scale_factor, cplanes.Get(1)*dataCube.x_scale_factor, 
+                                          cplanes.Get(2)*dataCube.y_scale_factor, cplanes.Get(3)*dataCube.y_scale_factor, 
+                                          cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor);
+    
     renWin->Render();
     renWin->Frame();
     renWin->WaitForCompletion();
