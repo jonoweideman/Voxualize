@@ -3,6 +3,9 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
+#include <chrono>
+#include <thread>
 
 // ffmpeg
 extern "C" {
@@ -346,8 +349,15 @@ class GreeterServiceImpl final : public Greeter::Service {
     
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
     AVPacket * pkt = encodePixelData(pixelData, request);
-    unsigned char * encodedData = pkt->data;
+    char * encodedData = reinterpret_cast<char *>(pkt->data);
     int num_bytes_tmp  = pkt->size;
+
+    for (int i = 0; i<100; i+=1){
+      cout << encodedData[i] << ' ';
+      if ((i+1)%4==0)
+        cout << endl;
+    }
+
     // return a stream.
     cout << "Starting to write encoded frame to stream: " << bytes_per_write  << endl;
     DataModel d;
@@ -447,9 +457,15 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->GetActiveCamera()->Elevation(30);
     ren1->ResetCameraClippingRange();
     ren1->ResetCamera();
-
+    renWin->SwapBuffersOff();
     renWin->SetSize(600, 600);
 
+    renWin->Render();
+    renWin->Frame();
+    captureScreenShotOfCurrentEGLRender();
+
+    double * position = ren1->GetActiveCamera()->GetFocalPoint();
+    cout << position[0] << ' ' << position[1] << ' ' << position[2] << endl;
     cout << "Finished setting up EGL render on server." << endl;
     return;
   }
@@ -458,7 +474,7 @@ class GreeterServiceImpl final : public Greeter::Service {
   // Also uses information from the request to update the cameras position, get resolution, etc.
   unsigned char * updateCameraAndGetData(const CameraInfo *request){
 
-    // Get virables
+    // Get variables
     const google::protobuf::RepeatedField<float> position = request->position();
     const google::protobuf::RepeatedField<float> focal_point = request->focal_point();
     const google::protobuf::RepeatedField<float> view_up = request->view_up();
@@ -468,7 +484,8 @@ class GreeterServiceImpl final : public Greeter::Service {
 
 
     // Set variables.
-    ren1->GetActiveCamera()->SetPosition(position.Get(0),position.Get(1),position.Get(2));
+    ren1->ResetCamera();
+    ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
     ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
     //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
     colorTransferFunction->RemoveAllPoints();
@@ -476,11 +493,11 @@ class GreeterServiceImpl final : public Greeter::Service {
     colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
 
     renWin->Render();
-    //renWin->Frame();
+    renWin->Frame();
     renWin->WaitForCompletion();
 
-    int oldSB = renWin->GetSwapBuffers();
-    renWin->SwapBuffersOff();
+    // int oldSB = renWin->GetSwapBuffers();
+    // renWin->SwapBuffersOff();
 
     captureScreenShotOfCurrentEGLRender();
 
@@ -492,7 +509,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     windowToImageFilter->Update();
 
     // restore swapping state
-    renWin->SetSwapBuffers(oldSB);
+    // renWin->SetSwapBuffers(oldSB);
 
     imageData = windowToImageFilter->GetOutput();
 
@@ -608,7 +625,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     if (got_output) {
       printf("Write frame %3d (size=%5d)\n", i, pkt->size);
       fwrite(pkt->data, 1, pkt->size, f);
-      av_free_packet(pkt);
+      //av_free_packet(pkt);
     }
 
     for (got_output = 1; got_output; i++) {
@@ -622,8 +639,9 @@ class GreeterServiceImpl final : public Greeter::Service {
       
       if (got_output) {
         printf("Write frame %3d (size=%5d)\n", i, pkt->size);
+        return pkt;
         fwrite(pkt->data, 1, pkt->size, f);
-        av_free_packet(pkt);
+        //av_free_packet(pkt);
       }
     }
     /* add sequence end code to have a real mpeg file */
