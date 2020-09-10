@@ -499,6 +499,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
     //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
     colorTransferFunction->RemoveAllPoints();
+    colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
     colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
     colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
 
@@ -537,7 +538,7 @@ class GreeterServiceImpl final : public Greeter::Service {
   }
   
   // Encode the data. For now using ffmpeg. Hopefully in future done using GPU acceleration.
-  AVPacket * encodePixelData(unsigned char *pixelData, const CameraInfo *request){\
+  AVPacket * encodePixelData(unsigned char *pixelData, const CameraInfo *request){
     cout << "Attempting to encode" << endl;
     const AVCodec *codec;
     AVCodecContext *c= NULL;
@@ -570,11 +571,13 @@ class GreeterServiceImpl final : public Greeter::Service {
 
     c->gop_size = 0; //Intra only - meaning the pictures should be constructed only from information
                       // within that picture, and not any other pictures.
-    c->max_b_frames = 1;
+    c->max_b_frames = 0;
+
     c->pix_fmt = AV_PIX_FMT_YUV420P;
+    c->profile = FF_PROFILE_H264_CONSTRAINED_BASELINE;
 
     if (codec->id == AV_CODEC_ID_H264)
-      av_opt_set(c->priv_data, "preset", "slow", 0);
+      av_opt_set(c->priv_data, "profile", "baseline", 0);
 
     ret = avcodec_open2(c, codec, NULL);
     if (ret < 0) {
