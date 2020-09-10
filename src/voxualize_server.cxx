@@ -78,6 +78,7 @@ using voxualize::CameraInfo;
 using voxualize::Dummy;
 using voxualize::DimensionDetails;
 using voxualize::HQRenderInfo;
+using voxualize::LODRequest;
 
 int renderFullModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
@@ -311,26 +312,29 @@ class GreeterServiceImpl final : public Greeter::Service {
                   DimensionDetails *reply) override {
     std::string file_name(request->file_name());
     dataCube.createCube(file_name);
+    dataCube.generateLODModel(1000000);
     
     // The LOD model's dimensions
     DataCube *dc = &dataCube;
     reply->add_dimensions_lod(dc->new_dim_x);
     reply->add_dimensions_lod(dc->new_dim_y);
     reply->add_dimensions_lod(dc->new_dim_z);
-    //std::cout<<reply->dimensions_lod(0) << ' ' << reply->dimensions_lod(1) << ' ' << reply->dimensions_lod(2)<< std::endl;
+    std::cout<<reply->dimensions_lod(0) << ' ' << reply->dimensions_lod(1) << ' ' << reply->dimensions_lod(2)<< std::endl;
 
     // The full model's dimensions
     reply->add_dimensions_original(dc->dimx);
     reply->add_dimensions_original(dc->dimy);
     reply->add_dimensions_original(dc->dimz);
-    //std::cout<<reply->dimensions_original(0) << ' ' << reply->dimensions_original(1) << ' ' << reply->dimensions_original(2)<< std::endl;
+    std::cout<<reply->dimensions_original(0) << ' ' << reply->dimensions_original(1) << ' ' << reply->dimensions_original(2)<< std::endl;
     // The reduction factors of each dimension. This could be calculated from the previous two set's
     // of values, but this is for convenience.
     reply->add_reduction_factors(dc->x_scale_factor);
     reply->add_reduction_factors(dc->y_scale_factor);
     reply->add_reduction_factors(dc->z_scale_factor);
-
+    std::cout<<reply->reduction_factors(0) << ' ' << reply->reduction_factors(1) << ' ' << reply->reduction_factors(2)<< std::endl;
+    
     reply->set_lod_num_bytes(dc->LOD_num_bytes);
+    std:: cout << reply->lod_num_bytes()<<endl;
 
     return Status::OK;
   }
@@ -386,8 +390,10 @@ class GreeterServiceImpl final : public Greeter::Service {
     return Status::OK;    
   }
 
-  Status GetModelData(ServerContext *context, const Dummy *request,
+  Status GetModelData(ServerContext *context, const LODRequest *request,
                             ServerWriter<DataModel> *writer) override {
+
+    //dataCube.generateLODModel(10000000);                          
     //renderFullModelOnServer(&dataCube); // For testing.
     
     // TO DOs:
@@ -472,6 +478,7 @@ class GreeterServiceImpl final : public Greeter::Service {
 
     renWin->Render();
     renWin->Frame();
+    renWin->WaitForCompletion();
     captureScreenShotOfCurrentEGLRender();
 
     double * position = ren1->GetActiveCamera()->GetFocalPoint();

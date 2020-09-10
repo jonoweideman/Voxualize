@@ -17,7 +17,7 @@ void DataCube::createCube(std::string fileName){
   cout << "Constructing DataCube object from " + fileName + " file." << endl;
   (*this).fileName = fileName;
   readInData();
-  generateLODModel();
+  //generateLODModel(); To be called externally.
 }
 
 // Default destructor
@@ -120,14 +120,45 @@ bool DataCube::getDimensions(int *dims){
   return false; // Could not find file.
 }
 
-float * DataCube::generateLODModel(){
+// Given the Size of the desired LOD model, create it.
+float * DataCube::generateLODModel(int size_in_bytes){
+
+  int dim_min = dimx;
+  if (dimy < dimx)
+    dim_min = dimy;
+  if (dimz < dim_min)
+    dim_min = dimz;
+
+  float array[3];
+  array[0] = (float)dimx/(float)dim_min;
+  array[1] = (float)dimy/(float)dim_min;
+  array[2] = (float)dimz/(float)dim_min;
+
+  float x = std::cbrt((float)size_in_bytes/(array[0]*array[1]*array[2]*4));
+
+  array[0] = array[0]*x;
+  array[1] = array[1]*x;
+  array[2] = array[2]*x;
+
+  // array now contains dimensions of new cube - in bytes.
+
   // Initialize LOD model variables.
-  new_dim_x = ceil((float)dimx/(float)x_scale_factor);
-  new_dim_y = ceil((float)dimy/(float)y_scale_factor);
-  new_dim_z = ceil((float)dimz/(float)z_scale_factor);
+  new_dim_x = ceil(array[0]);
+  new_dim_y = ceil(array[1]);
+  new_dim_z = ceil(array[2]);
+
+  cout << "New dimensions: " << new_dim_x << ' ' << new_dim_y<< ' ' << new_dim_z << endl;
+
   LOD_num_pixels = new_dim_x*new_dim_y*new_dim_z;
   LOD_num_bytes = LOD_num_pixels * sizeof(float);
+  cout << "LOD_num_bytes: " << LOD_num_bytes << endl;
   LODFloatArray = new float [LOD_num_pixels];
+
+  x_scale_factor = (float)dimx / new_dim_x;
+  y_scale_factor = (float)dimy / new_dim_y;
+  z_scale_factor = (float)dimz / new_dim_z;
+
+  cout << x_scale_factor << ' ' << y_scale_factor << ' ' << z_scale_factor << endl;
 
   for (int i=0; i<new_dim_x; i++){
     for (int j=0; j<new_dim_y; j++){
@@ -143,9 +174,9 @@ float * DataCube::generateLODModel(){
 
 float DataCube::calculateMax(int i, int j, int k){
   float max_pixel = numeric_limits<float>::min();
-  for (int x = i*x_scale_factor; x < (i+1)*x_scale_factor && x < dimx; x++){
-    for (int y = j*y_scale_factor; y < (j+1)*y_scale_factor && y < dimy; y++){
-      for (int z = k*z_scale_factor; z < (k+1)*z_scale_factor && z < dimz; z++){
+  for (int x = floor(i*x_scale_factor); x < ceil((i+1)*x_scale_factor) && x < dimx; x++){
+    for (int y = floor(j*y_scale_factor); y < ceil((j+1)*y_scale_factor) && y < dimy; y++){
+      for (int z = floor(k*z_scale_factor); z < ceil((k+1)*z_scale_factor) && z < dimz; z++){
         float temp = *(floatArray + x + y*dimx + z*dimx*dimy);
         if (isfinite(temp) && temp > max_pixel){
           max_pixel = temp;
@@ -159,9 +190,9 @@ float DataCube::calculateMax(int i, int j, int k){
 float DataCube::calculateMean(int i, int j, int k){
   float sum_pixels = 0;
   int temp_num_pixels = 0;
-  for (int x = i*x_scale_factor; x < (i+1)*x_scale_factor && x < dimx; x++){
-    for (int y = j*y_scale_factor; y < (j+1)*y_scale_factor && y < dimy; y++){
-      for (int z = k*z_scale_factor; z < (k+1)*z_scale_factor && z < dimz; z++){
+  for (int x = ceil(i*x_scale_factor); x < ceil((i+1)*x_scale_factor) && x < dimx; x++){
+    for (int y = ceil(j*y_scale_factor); y < ceil((j+1)*y_scale_factor) && y < dimy; y++){
+      for (int z = ceil(k*z_scale_factor); z < ceil((k+1)*z_scale_factor) && z < dimz; z++){
         float temp = *(floatArray + x + y*dimx + z*dimx*dimy);
         if (isfinite(temp)){
           sum_pixels += temp;

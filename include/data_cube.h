@@ -15,7 +15,7 @@ class DataCube{
 
     // The LOD related variables:
     float *LODFloatArray;
-    int x_scale_factor = 2; int y_scale_factor = 2; int z_scale_factor = 2;
+    float x_scale_factor; float y_scale_factor; float z_scale_factor;
     int new_dim_x; int new_dim_y; int new_dim_z;
     size_t LOD_num_pixels;
     size_t LOD_num_bytes;
@@ -32,7 +32,7 @@ class DataCube{
     float calculateMax(int i, int j, int k);
     float calculateMean(int i, int j, int k);
 
-    float * generateLODModel();
+    float * generateLODModel(int size_in_bytes);
     char * getBytePointerFullModel();
     char * getBytePointerLODModel();
     float * getFloatPointerFullModel();
