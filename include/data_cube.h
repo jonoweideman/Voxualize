@@ -19,6 +19,7 @@ class DataCube{
     int new_dim_x; int new_dim_y; int new_dim_z;
     size_t LOD_num_pixels;
     size_t LOD_num_bytes;
+    int cplanes_lod_model[6];
 
     bool constructedCorrectly;
     DataCube(void);
@@ -32,7 +33,8 @@ class DataCube{
     float calculateMax(int i, int j, int k);
     float calculateMean(int i, int j, int k);
 
-    float * generateLODModel(int size_in_bytes);
+    float * generateLODModel(int size_in_bytes); //The default one
+    float * generateLODModel(int size_in_bytes, float * cropping_dims); //With cropping planes info.
     char * getBytePointerFullModel();
     char * getBytePointerLODModel();
     float * getFloatPointerFullModel();

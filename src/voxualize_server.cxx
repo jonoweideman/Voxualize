@@ -75,10 +75,10 @@ using voxualize::DataModel;
 using voxualize::FilesRequest;
 using voxualize::FilesList;
 using voxualize::CameraInfo;
-using voxualize::Dummy;
 using voxualize::DimensionDetails;
 using voxualize::HQRenderInfo;
-using voxualize::LODRequest;
+using voxualize::GetDataRequest;
+using voxualize::ROILODInfo;
 
 int renderFullModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
@@ -307,12 +307,19 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   long num_bytes;
 
-  // Service to return the data of a specified file. 
+  // Service to return the data of a specified file, and starts the EGL render on the server.
   Status ChooseFile(ServerContext *context, const FileDetails *request,
                   DimensionDetails *reply) override {
+    cout << "ChooseFile rpc" << endl;
     std::string file_name(request->file_name());
     dataCube.createCube(file_name);
-    dataCube.generateLODModel(1000000);
+    float cropping_dims[3];
+    cropping_dims[0] = dataCube.dimx; cropping_dims[1] = dataCube.dimy; cropping_dims[2] = dataCube.dimz;
+    cout << "request->target_size_lod_bytes(): " <<  request->target_size_lod_bytes() << endl;
+    if (request->target_size_lod_bytes() == 0)
+      dataCube.generateLODModel(1000000, &cropping_dims[0]);
+    else
+      dataCube.generateLODModel(request->target_size_lod_bytes()*1000000, &cropping_dims[0]);
     
     // The LOD model's dimensions
     DataCube *dc = &dataCube;
@@ -336,13 +343,15 @@ class GreeterServiceImpl final : public Greeter::Service {
     reply->set_lod_num_bytes(dc->LOD_num_bytes);
     std:: cout << reply->lod_num_bytes()<<endl;
 
+    createEGLRenderOnServer();
+
     return Status::OK;
   }
 
   Status ListFiles(ServerContext *context, const FilesRequest *request,
                   FilesList *reply) override {
     // Retrieve a list of files to view
-    std::cout<< "ListFiles request on Server detected" << std::endl;
+    std::cout<< "ListFiles rpc" << std::endl;
     fs::path dir_path("../../../Data/");
     createFilesListResponse( dir_path, reply);
     return Status::OK;
@@ -350,6 +359,7 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   Status GetHQRenderSize(ServerContext *context, const CameraInfo *request,
                         HQRenderInfo *reply) override {
+    cout << "GetHQRenderSize rpc" << endl;
     // Get pointer to data.
     unsigned char * pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
 
@@ -359,40 +369,51 @@ class GreeterServiceImpl final : public Greeter::Service {
     return Status::OK;
   }
 
-  Status GetHighQualityRender(ServerContext *context, const Dummy *request,
-                            ServerWriter<DataModel> *writer) override {
+  // Status GetHighQualityRender(ServerContext *context, const Dummy *request,
+  //                           ServerWriter<DataModel> *writer) override {
+  //   cout << "GetHighQualityRender rpc" << endl;
+  //   char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
+  //   int num_bytes_tmp  = encodedFramePkt.size;
 
-    char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
-    int num_bytes_tmp  = encodedFramePkt.size;
+  //   // for (int i = 0; i<100; i+=1){
+  //   //   cout << encodedData[i] << ' ';
+  //   //   if ((i+1)%4==0)
+  //   //     cout << endl;
+  //   // }
 
-    // for (int i = 0; i<100; i+=1){
-    //   cout << encodedData[i] << ' ';
-    //   if ((i+1)%4==0)
-    //     cout << endl;
-    // }
-
-    // return a stream.
-    cout << "Starting to write encoded frame to stream: " << bytes_per_write  << endl;
-    DataModel d;
-    for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
-      if ( num_bytes_tmp - i < bytes_per_write){
-        d.set_bytes(encodedData, num_bytes_tmp - i);
-        d.set_num_bytes(num_bytes_tmp - i);
-      } else {
-        d.set_bytes(encodedData, bytes_per_write);
-        d.set_num_bytes(bytes_per_write);
-      }
-      writer->Write(d);
-      encodedData += bytes_per_write; // Update the pointer.
-    }
+  //   // return a stream.
+  //   cout << "Starting to write encoded frame to stream: " << bytes_per_write  << endl;
+  //   DataModel d;
+  //   for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
+  //     if ( num_bytes_tmp - i < bytes_per_write){
+  //       d.set_bytes(encodedData, num_bytes_tmp - i);
+  //       d.set_num_bytes(num_bytes_tmp - i);
+  //     } else {
+  //       d.set_bytes(encodedData, bytes_per_write);
+  //       d.set_num_bytes(bytes_per_write);
+  //     }
+  //     writer->Write(d);
+  //     encodedData += bytes_per_write; // Update the pointer.
+  //   }
     
-    cout << "Finished GetHighQualityRender rpc" << endl;
-    return Status::OK;    
-  }
+  //   cout << "Finished GetHighQualityRender rpc" << endl;
+  //   return Status::OK;    
+  // }
 
-  Status GetModelData(ServerContext *context, const LODRequest *request,
+  Status GetModelData(ServerContext *context, const GetDataRequest *request,
                             ServerWriter<DataModel> *writer) override {
+    cout << "GetModelData rpc" << endl;
 
+    switch (request->data_object()) {
+      case GetDataRequest::HQRender :
+        cout << "Request for HQRender" << endl;
+        streamHQRender(writer);
+        break;
+      case GetDataRequest::LODModel :
+        cout << "Request for LODModel" << endl;
+        streamLODModel(writer);
+        break;
+    }
     //dataCube.generateLODModel(10000000);                          
     //renderFullModelOnServer(&dataCube); // For testing.
     
@@ -404,14 +425,35 @@ class GreeterServiceImpl final : public Greeter::Service {
     //streamFullModel(writer, &dataCube);
 
     // Or return LOD model as bytes
-    streamLODModel(writer, &dataCube);
+    //streamLODModel(writer, &dataCube);
 
-    // Backend HQ render to capture screenshots requested by client.
-    createEGLRenderOnServer();
+    //createEGLRenderOnServer();
 
     return Status::OK;
   }
 
+  Status GetNewROILODSize(ServerContext *context, const CameraInfo *request,
+                            ROILODInfo *reply) override {
+    // Given the cropping planes info, compute new LOD model.
+    cout << "GetNewROILODSize rpc" << endl;
+    const google::protobuf::RepeatedField<float> cplanes = request->cropping_planes();
+    float cropping_dims[6];
+    
+    cropping_dims[0] = cplanes.Get(0); cropping_dims[1] = cplanes.Get(1); cropping_dims[2] = cplanes.Get(2);
+    cropping_dims[3] = cplanes.Get(3); cropping_dims[4] = cplanes.Get(4); cropping_dims[5] = cplanes.Get(5);
+ 
+    //For now just default
+    dataCube.generateLODModel(request->target_size_lod_bytes());
+    // if (cropping_dims[0]==dataCube)
+    // dataCube.generateLODModel(request->target_size_lod_bytes(), &cropping_dims[0]);
+
+    reply->set_true_size_lod_bytes(dataCube.LOD_num_bytes);
+    reply->add_dimensions_lod(dataCube.new_dim_x);
+    reply->add_dimensions_lod(dataCube.new_dim_y);
+    reply->add_dimensions_lod(dataCube.new_dim_z);
+
+    return Status::OK;
+  }
   void createEGLRenderOnServer(){
     cout << "Creating EGL render on server." << endl;
     floatArray = vtkSmartPointer<vtkFloatArray>::New();
@@ -740,20 +782,39 @@ class GreeterServiceImpl final : public Greeter::Service {
     // }
   }
 
-  void streamLODModel(ServerWriter<DataModel> *writer, DataCube *dataCube){
-    char * bytes = dataCube->getBytePointerLODModel();
-    //bytes_per_write = 64*64*64; // Performance tests to be run on this.
+  void streamLODModel(ServerWriter<DataModel> *writer){
+    char * bytes = dataCube.getBytePointerLODModel();
     DataModel d;
-    for (int i = 0; i < dataCube->LOD_num_bytes; i += bytes_per_write){
-      if ( dataCube->LOD_num_bytes - i < bytes_per_write){
-        d.set_bytes(bytes, dataCube->LOD_num_bytes - i);
-        d.set_num_bytes(dataCube->LOD_num_bytes - i);
+    for (int i = 0; i < dataCube.LOD_num_bytes; i += bytes_per_write){
+      if ( dataCube.LOD_num_bytes - i < bytes_per_write){
+        d.set_bytes(bytes, dataCube.LOD_num_bytes - i);
+        d.set_num_bytes(dataCube.LOD_num_bytes - i);
       } else {
         d.set_bytes(bytes, bytes_per_write);
         d.set_num_bytes(bytes_per_write);
       }
       writer->Write(d);
       bytes += bytes_per_write; // Update the pointer.
+    }
+  }
+
+  void streamHQRender(ServerWriter<DataModel> *writer){
+    cout << "Streaming HQ Render" << endl;
+    char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
+    int num_bytes_tmp  = encodedFramePkt.size;
+
+    cout << "Starting to write encoded frame to stream: " << bytes_per_write  << endl;
+    DataModel d;
+    for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
+      if ( num_bytes_tmp - i < bytes_per_write){
+        d.set_bytes(encodedData, num_bytes_tmp - i);
+        d.set_num_bytes(num_bytes_tmp - i);
+      } else {
+        d.set_bytes(encodedData, bytes_per_write);
+        d.set_num_bytes(bytes_per_write);
+      }
+      writer->Write(d);
+      encodedData += bytes_per_write; // Update the pointer.
     }
   }
 };
