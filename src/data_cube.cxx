@@ -122,10 +122,6 @@ bool DataCube::getDimensions(int *dims){
 
 // Given the Size of the desired LOD model, create it.
 float * DataCube::generateLODModel(int size_in_bytes){
-  // Initialize cplanes info
-  cplanes_lod_model[0] = 0; cplanes_lod_model[1] = dimx-1;
-  cplanes_lod_model[2] = 0; cplanes_lod_model[3] = dimy-1;
-  cplanes_lod_model[4] = 0; cplanes_lod_model[5] = dimz-1;
 
   int dim_min = dimx;
   if (dimy < dimx)
