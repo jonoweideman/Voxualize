@@ -7,7 +7,7 @@
 #include <chrono>
 #include <thread>
 #include <vector>
-#include "zfp.h"
+//#include "zfp.h"
 
 // ffmpeg
 extern "C" {
@@ -314,6 +314,8 @@ class GreeterServiceImpl final : public Greeter::Service {
   vector<float> array;
 
   long num_bytes;
+  unsigned char * pixelData;
+  int number_of_bytes;
 
   // Service to return the data of a specified file, and starts the EGL render on the server.
   Status ChooseFile(ServerContext *context, const FileDetails *request,
@@ -369,11 +371,17 @@ class GreeterServiceImpl final : public Greeter::Service {
                         HQRenderInfo *reply) override {
     cout << "GetHQRenderSize rpc" << endl;
     // Get pointer to data.
-    unsigned char * pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
+    pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
 
+    float * pixelDataFloats = reinterpret_cast<float *>(pixelData);
+    // for ( int i=0; i<100; i++){
+    //   cout << *pixelDataFloats;
+    // }
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
-    AVPacket * pkt = encodePixelData(pixelData, request);
-    reply->set_size_in_bytes(pkt->size);
+    //AVPacket * pkt = encodePixelData(pixelData, request);
+    //reply->set_size_in_bytes(pkt->size);
+    number_of_bytes = imageData->GetNumberOfPoints();
+    reply->set_size_in_bytes(imageData->GetNumberOfPoints());
     return Status::OK;
   }
 
@@ -521,7 +529,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->GetActiveCamera()->Elevation(30);
     ren1->ResetCameraClippingRange();
     ren1->ResetCamera();
-    renWin->SwapBuffersOff();
+    //renWin->SwapBuffersOff();
     renWin->SetSize(600, 600);
 
     renWin->Render();
@@ -558,14 +566,27 @@ class GreeterServiceImpl final : public Greeter::Service {
     colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
     colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
 
+
     cout << "Trying to set cropping planes" << endl;
+    cout << "Requested cropping planes: " << cplanes.Get(0) << ' ' << cplanes.Get(1) << ' ' << cplanes.Get(2) << ' ' << 
+                                            cplanes.Get(3) << ' ' << cplanes.Get(4) << ' ' << cplanes.Get(5)<< endl;
+    cout << "Cropping planes set on backend: " << cplanes.Get(0)*dataCube.x_scale_factor << ' ' << cplanes.Get(1)*dataCube.x_scale_factor 
+                                          << ' ' << cplanes.Get(2)*dataCube.y_scale_factor << ' ' << cplanes.Get(3)*dataCube.y_scale_factor 
+                                          << ' ' << cplanes.Get(4)*dataCube.z_scale_factor << ' ' << cplanes.Get(5)*dataCube.z_scale_factor << endl;
+
     volumeMapper->SetCroppingRegionPlanes(cplanes.Get(0)*dataCube.x_scale_factor, cplanes.Get(1)*dataCube.x_scale_factor, 
                                           cplanes.Get(2)*dataCube.y_scale_factor, cplanes.Get(3)*dataCube.y_scale_factor, 
                                           cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor);
-    
+    //cout << "Sleep 1..." << endl;
+    //sleep(5);
     renWin->Render();
+    //cout << "Sleep 2..." << endl;
+    //sleep(5);
     renWin->Frame();
+    //cout << "Sleep 3..." << endl;
+    //sleep(5);
     renWin->WaitForCompletion();
+    //cout << "Done!" << endl;
 
     // int oldSB = renWin->GetSwapBuffers();
     // renWin->SwapBuffersOff();
@@ -583,6 +604,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     // renWin->SetSwapBuffers(oldSB);
 
     imageData = windowToImageFilter->GetOutput();
+
+    cout << imageData->GetNumberOfCells() << endl;
+    cout << imageData->GetNumberOfPoints() << endl;
 
     int* dims = imageData->GetDimensions();
     std::cout << "Dims: " << " x: " << dims[0] << " y: " << dims[1] << " z: " << dims[2] << std::endl;
@@ -791,16 +815,30 @@ class GreeterServiceImpl final : public Greeter::Service {
   void streamLODModel(ServerWriter<DataModel> *writer){
     //char * bytes = dataCube.getBytePointerLODModel();
     // Do zfp compression.
-    cout << "Zfp compressing LOD model..." << endl;
-    int status = Compress(dataCube.LODFloatArray,  &compression_buffer, &compression_size, 
-                          dataCube.new_dim_x, dataCube.new_dim_y, dataCube.new_dim_z, 11);
-    cout << "Finished compressing." << endl;
-    char * bytes = compression_buffer.data();
+    // cout << "Zfp compressing LOD model..." << endl;
+    // int status = Compress(dataCube.LODFloatArray,  &compression_buffer, &compression_size, 
+    //                       dataCube.new_dim_x, dataCube.new_dim_y, dataCube.new_dim_z, 11);
+    // cout << "Finished compressing." << endl;
+    // char * bytes = compression_buffer.data();
+    // DataModel d;
+    // for (int i = 0; i < compression_size; i += bytes_per_write){
+    //   if ( compression_size - i < bytes_per_write){
+    //     d.set_bytes(bytes, compression_size - i);
+    //     d.set_num_bytes(compression_size - i);
+    //   } else {
+    //     d.set_bytes(bytes, bytes_per_write);
+    //     d.set_num_bytes(bytes_per_write);
+    //   }
+    //   writer->Write(d);
+    //   bytes += bytes_per_write; // Update the pointer.
+    // }
+
+    char * bytes = dataCube.getBytePointerLODModel();
     DataModel d;
-    for (int i = 0; i < compression_size; i += bytes_per_write){
-      if ( compression_size - i < bytes_per_write){
-        d.set_bytes(bytes, compression_size - i);
-        d.set_num_bytes(compression_size - i);
+    for (int i = 0; i < dataCube.LOD_num_bytes; i += bytes_per_write){
+      if ( dataCube.LOD_num_bytes - i < bytes_per_write){
+        d.set_bytes(bytes, dataCube.LOD_num_bytes - i);
+        d.set_num_bytes(dataCube.LOD_num_bytes - i);
       } else {
         d.set_bytes(bytes, bytes_per_write);
         d.set_num_bytes(bytes_per_write);
@@ -812,8 +850,13 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   void streamHQRender(ServerWriter<DataModel> *writer){
     cout << "Streaming HQ Render" << endl;
-    char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
-    int num_bytes_tmp  = encodedFramePkt.size;
+    //char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
+    char * encodedData = reinterpret_cast<char *>(pixelData);
+    // for ( int i=0; i<100; i++){
+    //   cout << *(encodedData+i) << ' ';
+    // }
+    //int num_bytes_tmp  = encodedFramePkt.size;
+    int num_bytes_tmp = number_of_bytes;
 
     cout << "Starting to write encoded frame to stream: " << bytes_per_write  << endl;
     DataModel d;
@@ -830,45 +873,45 @@ class GreeterServiceImpl final : public Greeter::Service {
     }
   }
 
-  int Compress(float* array, vector<char>* compression_buffer, size_t* compressed_size, 
-               uint32_t nx, uint32_t ny, uint32 nz, uint32_t precision) {
-    int status = 0;     /* return value: 0 = success */
-    zfp_type type;      /* array scalar type */
-    zfp_field* field;   /* array meta data */
-    zfp_stream* zfp;    /* compressed stream */
-    size_t buffer_size; /* byte size of compressed buffer */
-    bitstream* stream;  /* bit stream to write to or read from */
+//   int Compress(float* array, vector<char>* compression_buffer, size_t* compressed_size, 
+//                uint32_t nx, uint32_t ny, uint32 nz, uint32_t precision) {
+//     int status = 0;     /* return value: 0 = success */
+//     zfp_type type;      /* array scalar type */
+//     zfp_field* field;   /* array meta data */
+//     zfp_stream* zfp;    /* compressed stream */
+//     size_t buffer_size; /* byte size of compressed buffer */
+//     bitstream* stream;  /* bit stream to write to or read from */
 
-    type = zfp_type_float;
-    field = zfp_field_3d(array, type, nx, ny, nz);
+//     type = zfp_type_float;
+//     field = zfp_field_3d(array, type, nx, ny, nz);
 
-    /* allocate meta data for a compressed stream */
-    zfp = zfp_stream_open(nullptr);
+//     /* allocate meta data for a compressed stream */
+//     zfp = zfp_stream_open(nullptr);
 
-    /* set compression mode and parameters via one of three functions */
-    zfp_stream_set_precision(zfp, precision);
+//     /* set compression mode and parameters via one of three functions */
+//     zfp_stream_set_precision(zfp, precision);
 
-    /* allocate buffer for compressed data */
-    buffer_size = zfp_stream_maximum_size(zfp, field);
-    if (compression_buffer->size() < buffer_size) {
-        compression_buffer->resize(buffer_size);
-    }
-    stream = stream_open(compression_buffer->data(), buffer_size);
-    zfp_stream_set_bit_stream(zfp, stream);
-    zfp_stream_rewind(zfp);
+//     /* allocate buffer for compressed data */
+//     buffer_size = zfp_stream_maximum_size(zfp, field);
+//     if (compression_buffer->size() < buffer_size) {
+//         compression_buffer->resize(buffer_size);
+//     }
+//     stream = stream_open(compression_buffer->data(), buffer_size);
+//     zfp_stream_set_bit_stream(zfp, stream);
+//     zfp_stream_rewind(zfp);
 
-    *compressed_size = zfp_compress(zfp, field);
-    if (!(*compressed_size)) {
-        status = 1;
-    }
+//     *compressed_size = zfp_compress(zfp, field);
+//     if (!(*compressed_size)) {
+//         status = 1;
+//     }
 
-    /* clean up */
-    zfp_field_free(field);
-    zfp_stream_close(zfp);
-    stream_close(stream);
+//     /* clean up */
+//     zfp_field_free(field);
+//     zfp_stream_close(zfp);
+//     stream_close(stream);
 
-    return status;
-}
+//     return status;
+// }
 
 };
 
