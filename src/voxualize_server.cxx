@@ -6,11 +6,12 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <vector>
+#include "zfp.h"
 
 // ffmpeg
 extern "C" {
   #include <libavcodec/avcodec.h>
-
   #include <libavutil/opt.h>
   #include <libavutil/imgutils.h>
   #include <libswscale/swscale.h>
@@ -79,6 +80,8 @@ using voxualize::DimensionDetails;
 using voxualize::HQRenderInfo;
 using voxualize::GetDataRequest;
 using voxualize::ROILODInfo;
+
+using namespace std;
 
 int renderFullModelOnServer(DataCube *dataCube){
   vtkSmartPointer<vtkFloatArray> floatArray = vtkSmartPointer<vtkFloatArray>::New();
@@ -305,6 +308,11 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   AVPacket encodedFramePkt;
 
+  // Vectors used for compression.
+  vector<char> compression_buffer;
+  size_t compression_size;
+  vector<float> array;
+
   long num_bytes;
 
   // Service to return the data of a specified file, and starts the EGL render on the server.
@@ -317,9 +325,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     cropping_dims[0] = dataCube.dimx; cropping_dims[1] = dataCube.dimy; cropping_dims[2] = dataCube.dimz;
     cout << "request->target_size_lod_bytes(): " <<  request->target_size_lod_bytes() << endl;
     if (request->target_size_lod_bytes() == 0)
-      dataCube.generateLODModel(1000000, &cropping_dims[0]);
+      dataCube.generateLODModel(10);
     else
-      dataCube.generateLODModel(request->target_size_lod_bytes()*1000000, &cropping_dims[0]);
+      dataCube.generateLODModel(request->target_size_lod_bytes());
     
     // The LOD model's dimensions
     DataCube *dc = &dataCube;
@@ -438,22 +446,20 @@ class GreeterServiceImpl final : public Greeter::Service {
     cout << "GetNewROILODSize rpc" << endl;
     const google::protobuf::RepeatedField<float> cplanes = request->cropping_planes();
     float cropping_dims[6];
-    
     cropping_dims[0] = cplanes.Get(0); cropping_dims[1] = cplanes.Get(1); cropping_dims[2] = cplanes.Get(2);
     cropping_dims[3] = cplanes.Get(3); cropping_dims[4] = cplanes.Get(4); cropping_dims[5] = cplanes.Get(5);
- 
-    //For now just default
-    dataCube.generateLODModel(request->target_size_lod_bytes());
-    // if (cropping_dims[0]==dataCube)
-    // dataCube.generateLODModel(request->target_size_lod_bytes(), &cropping_dims[0]);
+
+    cout << "Request for new ROI, memsize or both detected." << endl;
+    dataCube.generateLODModelNew(request->target_size_lod_bytes(), &cropping_dims[0]);
 
     reply->set_true_size_lod_bytes(dataCube.LOD_num_bytes);
     reply->add_dimensions_lod(dataCube.new_dim_x);
     reply->add_dimensions_lod(dataCube.new_dim_y);
     reply->add_dimensions_lod(dataCube.new_dim_z);
-
+    cout << "Finished GetNewROILODSize rpc" << endl;
     return Status::OK;
   }
+
   void createEGLRenderOnServer(){
     cout << "Creating EGL render on server." << endl;
     floatArray = vtkSmartPointer<vtkFloatArray>::New();
@@ -783,12 +789,18 @@ class GreeterServiceImpl final : public Greeter::Service {
   }
 
   void streamLODModel(ServerWriter<DataModel> *writer){
-    char * bytes = dataCube.getBytePointerLODModel();
+    //char * bytes = dataCube.getBytePointerLODModel();
+    // Do zfp compression.
+    cout << "Zfp compressing LOD model..." << endl;
+    int status = Compress(dataCube.LODFloatArray,  &compression_buffer, &compression_size, 
+                          dataCube.new_dim_x, dataCube.new_dim_y, dataCube.new_dim_z, 11);
+    cout << "Finished compressing." << endl;
+    char * bytes = compression_buffer.data();
     DataModel d;
-    for (int i = 0; i < dataCube.LOD_num_bytes; i += bytes_per_write){
-      if ( dataCube.LOD_num_bytes - i < bytes_per_write){
-        d.set_bytes(bytes, dataCube.LOD_num_bytes - i);
-        d.set_num_bytes(dataCube.LOD_num_bytes - i);
+    for (int i = 0; i < compression_size; i += bytes_per_write){
+      if ( compression_size - i < bytes_per_write){
+        d.set_bytes(bytes, compression_size - i);
+        d.set_num_bytes(compression_size - i);
       } else {
         d.set_bytes(bytes, bytes_per_write);
         d.set_num_bytes(bytes_per_write);
@@ -817,6 +829,47 @@ class GreeterServiceImpl final : public Greeter::Service {
       encodedData += bytes_per_write; // Update the pointer.
     }
   }
+
+  int Compress(float* array, vector<char>* compression_buffer, size_t* compressed_size, 
+               uint32_t nx, uint32_t ny, uint32 nz, uint32_t precision) {
+    int status = 0;     /* return value: 0 = success */
+    zfp_type type;      /* array scalar type */
+    zfp_field* field;   /* array meta data */
+    zfp_stream* zfp;    /* compressed stream */
+    size_t buffer_size; /* byte size of compressed buffer */
+    bitstream* stream;  /* bit stream to write to or read from */
+
+    type = zfp_type_float;
+    field = zfp_field_3d(array, type, nx, ny, nz);
+
+    /* allocate meta data for a compressed stream */
+    zfp = zfp_stream_open(nullptr);
+
+    /* set compression mode and parameters via one of three functions */
+    zfp_stream_set_precision(zfp, precision);
+
+    /* allocate buffer for compressed data */
+    buffer_size = zfp_stream_maximum_size(zfp, field);
+    if (compression_buffer->size() < buffer_size) {
+        compression_buffer->resize(buffer_size);
+    }
+    stream = stream_open(compression_buffer->data(), buffer_size);
+    zfp_stream_set_bit_stream(zfp, stream);
+    zfp_stream_rewind(zfp);
+
+    *compressed_size = zfp_compress(zfp, field);
+    if (!(*compressed_size)) {
+        status = 1;
+    }
+
+    /* clean up */
+    zfp_field_free(field);
+    zfp_stream_close(zfp);
+    stream_close(stream);
+
+    return status;
+}
+
 };
 
 void RunServer()

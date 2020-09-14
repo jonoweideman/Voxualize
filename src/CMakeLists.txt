@@ -190,5 +190,6 @@ foreach(_target
     ${Boost_SYSTEM_LIBRARY}
     "/usr/lib/x86_64-linux-gnu/libavcodec.so.58"
     "/usr/lib/x86_64-linux-gnu/libavutil.so.56"
-    "/usr/lib/x86_64-linux-gnu/libswscale.so.5")
+    "/usr/lib/x86_64-linux-gnu/libswscale.so.5"
+    "/usr/lib/libzfp.so")
 endforeach()

@@ -19,7 +19,8 @@ class DataCube{
     int new_dim_x; int new_dim_y; int new_dim_z;
     size_t LOD_num_pixels;
     size_t LOD_num_bytes;
-    int cplanes_lod_model[6];
+    int lod_current_size_in_mb;
+    int current_cplanes_lod_model[6]; //Relative to the entire model. Need to keep track of.
 
     bool constructedCorrectly;
     DataCube(void);
@@ -31,10 +32,11 @@ class DataCube{
     void readVtkFile();
     bool getDimensions(int *dims);
     float calculateMax(int i, int j, int k);
+    float calculateMax(int i, int j, int k, int * cplanes);
     float calculateMean(int i, int j, int k);
 
-    float * generateLODModel(int size_in_bytes); //The default one
-    float * generateLODModel(int size_in_bytes, float * cropping_dims); //With cropping planes info.
+    float * generateLODModel(int size_in_mb); //The default one
+    float * generateLODModelNew(int size_in_mb, float * cropping_dims); // New mem size and/or ROI.
     char * getBytePointerFullModel();
     char * getBytePointerLODModel();
     float * getFloatPointerFullModel();
