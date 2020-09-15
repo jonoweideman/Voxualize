@@ -380,8 +380,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
     //AVPacket * pkt = encodePixelData(pixelData, request);
     //reply->set_size_in_bytes(pkt->size);
-    number_of_bytes = imageData->GetNumberOfPoints();
-    reply->set_size_in_bytes(imageData->GetNumberOfPoints());
+    number_of_bytes = imageData->GetNumberOfPoints()*4;
+    reply->set_size_in_bytes(imageData->GetNumberOfPoints()*4);
     return Status::OK;
   }
 
