@@ -558,7 +558,10 @@ class GreeterServiceImpl final : public Greeter::Service {
     const google::protobuf::RepeatedField<float> cplanes = request->cropping_planes();
     const float alpha = request->alpha();
     const double distance = request->distance();
-
+    
+    renWin -> Finalize();
+    renWin-> Initialize();
+    renWin->SetSize(600, 600);
     // Set variables.
     //ren1->ResetCamera();
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
@@ -583,10 +586,11 @@ class GreeterServiceImpl final : public Greeter::Service {
     //cout << "Sleep 1..." << endl;
     //sleep(5);
     //renWin->SwapBuffersOff();
+    renWin->AddRenderer(ren1);
     cout << "Is current? : " << renWin->IsCurrent() << endl;
     renWin->Render();
     //sleep(5);
-    //renWin->Frame();
+    renWin->Frame();
     //cout << "Sleep 3..." << endl;
     //sleep(5);
     renWin->WaitForCompletion();
