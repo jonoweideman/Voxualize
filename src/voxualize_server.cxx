@@ -317,6 +317,8 @@ class GreeterServiceImpl final : public Greeter::Service {
   unsigned char * pixelData;
   int number_of_bytes;
 
+  unsigned char * pointer;
+
   // Service to return the data of a specified file, and starts the EGL render on the server.
   Status ChooseFile(ServerContext *context, const FileDetails *request,
                   DimensionDetails *reply) override {
@@ -374,8 +376,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
 
     float * pixelDataFloats = reinterpret_cast<float *>(pixelData);
-    // for ( int i=0; i<100; i++){
-    //   cout << *pixelDataFloats;
+    // for ( int i=180000; i<180100; i++){
+    //   cout << *(pixelDataFloats+1) << ' ';
     // }
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
     //AVPacket * pkt = encodePixelData(pixelData, request);
@@ -460,10 +462,10 @@ class GreeterServiceImpl final : public Greeter::Service {
     cout << "Request for new ROI, memsize or both detected." << endl;
     dataCube.generateLODModelNew(request->target_size_lod_bytes(), &cropping_dims[0]);
 
-    reply->set_true_size_lod_bytes(dataCube.LOD_num_bytes);
-    reply->add_dimensions_lod(dataCube.new_dim_x);
-    reply->add_dimensions_lod(dataCube.new_dim_y);
-    reply->add_dimensions_lod(dataCube.new_dim_z);
+    //reply->set_true_size_lod_bytes(dataCube.LOD_num_bytes);
+    //reply->add_dimensions_lod(dataCube.new_dim_x);
+    //reply->add_dimensions_lod(dataCube.new_dim_y);
+    //reply->add_dimensions_lod(dataCube.new_dim_z);
     cout << "Finished GetNewROILODSize rpc" << endl;
     return Status::OK;
   }
@@ -488,7 +490,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     volumeMapper = vtkSmartPointer<vtkSmartVolumeMapper>::New();
     volumeMapper->SetBlendModeToComposite(); // composite first
     volumeMapper->SetInputConnection(imageImport->GetOutputPort());
-    volumeMapper->CroppingOn();
+    //volumeMapper->CroppingOn();
 
     // Create the standard renderer, render window
     // and interactor
@@ -530,12 +532,13 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->ResetCameraClippingRange();
     ren1->ResetCamera();
     //renWin->SwapBuffersOff();
+    cout << "Is current? : " << renWin->IsCurrent() << endl;
     renWin->SetSize(600, 600);
 
-    renWin->Render();
-    renWin->Frame();
-    renWin->WaitForCompletion();
-    captureScreenShotOfCurrentEGLRender();
+    //renWin->Render();
+    //renWin->Frame();
+    //renWin->WaitForCompletion();
+    //captureScreenShotOfCurrentEGLRender();
 
     double * position = ren1->GetActiveCamera()->GetFocalPoint();
     cout << position[0] << ' ' << position[1] << ' ' << position[2] << endl;
@@ -557,14 +560,14 @@ class GreeterServiceImpl final : public Greeter::Service {
     const double distance = request->distance();
 
     // Set variables.
-    ren1->ResetCamera();
+    //ren1->ResetCamera();
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
     ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
     //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
-    colorTransferFunction->RemoveAllPoints();
-    colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
-    colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
-    colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
+    // colorTransferFunction->RemoveAllPoints();
+    // colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
+    // colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
+    // colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
 
 
     cout << "Trying to set cropping planes" << endl;
@@ -574,22 +577,24 @@ class GreeterServiceImpl final : public Greeter::Service {
                                           << ' ' << cplanes.Get(2)*dataCube.y_scale_factor << ' ' << cplanes.Get(3)*dataCube.y_scale_factor 
                                           << ' ' << cplanes.Get(4)*dataCube.z_scale_factor << ' ' << cplanes.Get(5)*dataCube.z_scale_factor << endl;
 
-    volumeMapper->SetCroppingRegionPlanes(cplanes.Get(0)*dataCube.x_scale_factor, cplanes.Get(1)*dataCube.x_scale_factor, 
-                                          cplanes.Get(2)*dataCube.y_scale_factor, cplanes.Get(3)*dataCube.y_scale_factor, 
-                                          cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor);
+    //volumeMapper->SetCroppingRegionPlanes(cplanes.Get(0)*dataCube.x_scale_factor, cplanes.Get(1)*dataCube.x_scale_factor, 
+      //                                    cplanes.Get(2)*dataCube.y_scale_factor, cplanes.Get(3)*dataCube.y_scale_factor, 
+     //                                     cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor);
     //cout << "Sleep 1..." << endl;
     //sleep(5);
+    //renWin->SwapBuffersOff();
+    cout << "Is current? : " << renWin->IsCurrent() << endl;
     renWin->Render();
-    //cout << "Sleep 2..." << endl;
     //sleep(5);
-    renWin->Frame();
+    //renWin->Frame();
     //cout << "Sleep 3..." << endl;
     //sleep(5);
     renWin->WaitForCompletion();
     //cout << "Done!" << endl;
+    cout << "Is current? : " << renWin->IsCurrent() << endl;
 
     // int oldSB = renWin->GetSwapBuffers();
-    // renWin->SwapBuffersOff();
+    //renWin->SwapBuffersOff();
 
     captureScreenShotOfCurrentEGLRender();
 
@@ -605,14 +610,18 @@ class GreeterServiceImpl final : public Greeter::Service {
 
     imageData = windowToImageFilter->GetOutput();
 
-    cout << imageData->GetNumberOfCells() << endl;
-    cout << imageData->GetNumberOfPoints() << endl;
+    //cout << imageData->GetNumberOfCells() << endl;
+    //cout << imageData->GetNumberOfPoints() << endl;
 
     int* dims = imageData->GetDimensions();
     std::cout << "Dims: " << " x: " << dims[0] << " y: " << dims[1] << " z: " << dims[2] << std::endl;
-
-    unsigned char * pointer = static_cast<unsigned char *>(imageData->GetScalarPointer(0,0,0));
-
+    //imageData -> PrintSelf(cout, vtkIndent(2)) ;
+    pointer = static_cast<unsigned char *>(imageData->GetScalarPointer(0,0,0));
+    // for ( int i=100000; i<100100; i++){
+    //   cout << +*(pointer+i) << ' ';
+    // }
+    //renWin->Initialize();
+    //renWin->AddRenderer(ren1);
     return pointer;
   }
   
@@ -736,8 +745,9 @@ class GreeterServiceImpl final : public Greeter::Service {
       
       if (got_output) {
         printf("Write frame %3d (size=%5d)\n", i, pkt->size);
-        return pkt;
+        
         fwrite(pkt->data, 1, pkt->size, f);
+        return pkt;
         //av_free_packet(pkt);
       }
     }
@@ -852,26 +862,26 @@ class GreeterServiceImpl final : public Greeter::Service {
     cout << "Streaming HQ Render" << endl;
     //char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
     char * encodedData = reinterpret_cast<char *>(pixelData);
-    for ( int i=100000; i<100100; i++){
-      cout << +*(encodedData+i) << ' ';
-    }
+    // for ( int i=100000; i<100100; i++){
+    //   cout << +*(encodedData+i) << ' ';
+    // }
     //int num_bytes_tmp  = encodedFramePkt.size;
     int num_bytes_tmp = number_of_bytes;
 
-    cout << "Starting to write encoded frame to stream: " << bytes_per_write << ' ' << num_bytes_tmp << endl;
+    //cout << "Starting to write encoded frame to stream: " << bytes_per_write << ' ' << num_bytes_tmp << endl;
     DataModel d;
     for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
-      cout << "Hello" << endl;
+      //cout << "Hello" << endl;
       if ( num_bytes_tmp - i < bytes_per_write){
         cout << num_bytes_tmp - i << endl;
         d.set_bytes(encodedData, num_bytes_tmp - i);
         d.set_num_bytes(num_bytes_tmp - i);
       } else {
+        cout << bytes_per_write << endl;
         d.set_bytes(encodedData, bytes_per_write);
         d.set_num_bytes(bytes_per_write);
       }
       encodedData += bytes_per_write; // Update the pointer.
-      cout << bytes_per_write << endl;
       writer->Write(d);
       // encodedData += bytes_per_write; // Update the pointer.
       // cout << bytes_per_write;
