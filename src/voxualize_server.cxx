@@ -852,24 +852,29 @@ class GreeterServiceImpl final : public Greeter::Service {
     cout << "Streaming HQ Render" << endl;
     //char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
     char * encodedData = reinterpret_cast<char *>(pixelData);
-    // for ( int i=0; i<100; i++){
-    //   cout << *(encodedData+i) << ' ';
-    // }
+    for ( int i=100000; i<100100; i++){
+      cout << +*(encodedData+i) << ' ';
+    }
     //int num_bytes_tmp  = encodedFramePkt.size;
     int num_bytes_tmp = number_of_bytes;
 
-    cout << "Starting to write encoded frame to stream: " << bytes_per_write  << endl;
+    cout << "Starting to write encoded frame to stream: " << bytes_per_write << ' ' << num_bytes_tmp << endl;
     DataModel d;
     for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
+      cout << "Hello" << endl;
       if ( num_bytes_tmp - i < bytes_per_write){
+        cout << num_bytes_tmp - i << endl;
         d.set_bytes(encodedData, num_bytes_tmp - i);
         d.set_num_bytes(num_bytes_tmp - i);
       } else {
         d.set_bytes(encodedData, bytes_per_write);
         d.set_num_bytes(bytes_per_write);
       }
-      writer->Write(d);
       encodedData += bytes_per_write; // Update the pointer.
+      cout << bytes_per_write << endl;
+      writer->Write(d);
+      // encodedData += bytes_per_write; // Update the pointer.
+      // cout << bytes_per_write;
     }
   }
 
