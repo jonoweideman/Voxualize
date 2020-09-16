@@ -267,16 +267,14 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
     new_dim_y = ceil(array[1]);
     new_dim_z = ceil(array[2]);
 
-    x_scale_factor = (current_cplanes_lod_model[1]+1-current_cplanes_lod_model[0]) / new_dim_x;
-    y_scale_factor = (current_cplanes_lod_model[3]+1-current_cplanes_lod_model[2]) / new_dim_y;
-    z_scale_factor = (current_cplanes_lod_model[5]+1-current_cplanes_lod_model[4]) / new_dim_z;
+    x_scale_factor = (float)(current_cplanes_lod_model[1]+1-current_cplanes_lod_model[0]) / new_dim_x;
+    y_scale_factor = (float)(current_cplanes_lod_model[3]+1-current_cplanes_lod_model[2]) / new_dim_y;
+    z_scale_factor = (float)(current_cplanes_lod_model[5]+1-current_cplanes_lod_model[4]) / new_dim_z;
 
     delete [] LODFloatArray;
     LOD_num_pixels = new_dim_x*new_dim_y*new_dim_z;
     LOD_num_bytes = LOD_num_pixels*4;
     LODFloatArray = new float [LOD_num_pixels];
-
-    cout << "Helllooo" << endl;
 
     // Now: need to sample a LOD cube of these dimensions from the cropping region (which is the same).
     for (int i=0; i<new_dim_x; i++){
@@ -312,7 +310,7 @@ float DataCube::calculateMax(int i, int j, int k, int * cplanes){
   float max_pixel = numeric_limits<float>::min();
   for (int x = floor((float)cplanes[0]+i*x_scale_factor); x < ceil((float)cplanes[0]+(i+1)*x_scale_factor) && x < cplanes[1]; x++){
     for (int y = floor((float)cplanes[2]+j*y_scale_factor); y < ceil((float)cplanes[2]+(j+1)*y_scale_factor) && y < cplanes[3]; y++){
-      for (int z = floor((float)cplanes[4]+k*z_scale_factor); z < ceil((float)cplanes[4]+(j+1)*z_scale_factor) && z < cplanes[5]; z++){
+      for (int z = floor((float)cplanes[4]+k*z_scale_factor); z < ceil((float)cplanes[4]+(k+1)*z_scale_factor) && z < cplanes[5]; z++){
         float temp = *(floatArray + x + y*dimx + z*dimx*dimy);
         if (isfinite(temp) && temp > max_pixel){
           max_pixel = temp;
