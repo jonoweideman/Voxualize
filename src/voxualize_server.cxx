@@ -316,6 +316,7 @@ class GreeterServiceImpl final : public Greeter::Service {
   long num_bytes;
   unsigned char * pixelData;
   int number_of_bytes;
+  bool is_egl_started;
 
   unsigned char * pointer;
 
@@ -355,7 +356,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     reply->set_lod_num_bytes(dc->LOD_num_bytes);
     std:: cout << reply->lod_num_bytes()<<endl;
 
-    createEGLRenderOnServer();
+    //createEGLRenderOnServer();
 
     return Status::OK;
   }
@@ -366,12 +367,17 @@ class GreeterServiceImpl final : public Greeter::Service {
     std::cout<< "ListFiles rpc" << std::endl;
     fs::path dir_path("../../../Data/");
     createFilesListResponse( dir_path, reply);
+    is_egl_started = false;
     return Status::OK;
   }
 
   Status GetHQRenderSize(ServerContext *context, const CameraInfo *request,
                         HQRenderInfo *reply) override {
     cout << "GetHQRenderSize rpc" << endl;
+    if (!is_egl_started){
+      createEGLRenderOnServer();
+      is_egl_started = true;
+    }
     // Get pointer to data.
     pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
 
