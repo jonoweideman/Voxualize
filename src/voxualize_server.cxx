@@ -462,10 +462,10 @@ class GreeterServiceImpl final : public Greeter::Service {
     cout << "Request for new ROI, memsize or both detected." << endl;
     dataCube.generateLODModelNew(request->target_size_lod_bytes(), &cropping_dims[0]);
 
-    //reply->set_true_size_lod_bytes(dataCube.LOD_num_bytes);
-    //reply->add_dimensions_lod(dataCube.new_dim_x);
-    //reply->add_dimensions_lod(dataCube.new_dim_y);
-    //reply->add_dimensions_lod(dataCube.new_dim_z);
+    reply->set_true_size_lod_bytes(dataCube.LOD_num_bytes);
+    reply->add_dimensions_lod(dataCube.new_dim_x);
+    reply->add_dimensions_lod(dataCube.new_dim_y);
+    reply->add_dimensions_lod(dataCube.new_dim_z);
     cout << "Finished GetNewROILODSize rpc" << endl;
     return Status::OK;
   }
@@ -558,6 +558,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     const google::protobuf::RepeatedField<float> cplanes = request->cropping_planes();
     const float alpha = request->alpha();
     const double distance = request->distance();
+    const int window_width = request->window_width();
+    const int window_height = request->window_height();
     
     renWin -> Finalize();
     renWin-> Initialize();
@@ -566,11 +568,11 @@ class GreeterServiceImpl final : public Greeter::Service {
     //ren1->ResetCamera();
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
     ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
-    //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
-    // colorTransferFunction->RemoveAllPoints();
-    // colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
-    // colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
-    // colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
+    ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
+    colorTransferFunction->RemoveAllPoints();
+    colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
+    colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
+    colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
 
 
     cout << "Trying to set cropping planes" << endl;
@@ -849,6 +851,7 @@ class GreeterServiceImpl final : public Greeter::Service {
 
     char * bytes = dataCube.getBytePointerLODModel();
     DataModel d;
+    cout << dataCube.LOD_num_bytes << endl;
     for (int i = 0; i < dataCube.LOD_num_bytes; i += bytes_per_write){
       if ( dataCube.LOD_num_bytes - i < bytes_per_write){
         d.set_bytes(bytes, dataCube.LOD_num_bytes - i);
@@ -856,9 +859,10 @@ class GreeterServiceImpl final : public Greeter::Service {
       } else {
         d.set_bytes(bytes, bytes_per_write);
         d.set_num_bytes(bytes_per_write);
+        bytes += bytes_per_write; // Update the pointer.
       }
       writer->Write(d);
-      bytes += bytes_per_write; // Update the pointer.
+      //bytes += bytes_per_write; // Update the pointer.
     }
   }
 
@@ -872,7 +876,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     //int num_bytes_tmp  = encodedFramePkt.size;
     int num_bytes_tmp = number_of_bytes;
 
-    //cout << "Starting to write encoded frame to stream: " << bytes_per_write << ' ' << num_bytes_tmp << endl;
+    cout << "Starting to write encoded frame to stream: " << bytes_per_write << ' ' << num_bytes_tmp << endl;
     DataModel d;
     for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
       //cout << "Hello" << endl;
@@ -880,12 +884,14 @@ class GreeterServiceImpl final : public Greeter::Service {
         cout << num_bytes_tmp - i << endl;
         d.set_bytes(encodedData, num_bytes_tmp - i);
         d.set_num_bytes(num_bytes_tmp - i);
+        //encodedData += bytes_per_write; // Update the pointer.
       } else {
         cout << bytes_per_write << endl;
         d.set_bytes(encodedData, bytes_per_write);
         d.set_num_bytes(bytes_per_write);
+        encodedData += bytes_per_write; // Update the pointer.
       }
-      encodedData += bytes_per_write; // Update the pointer.
+      //encodedData += bytes_per_write; // Update the pointer.
       writer->Write(d);
       // encodedData += bytes_per_write; // Update the pointer.
       // cout << bytes_per_write;

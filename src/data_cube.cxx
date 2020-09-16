@@ -226,14 +226,16 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
                      (current_cplanes_lod_model[3]+1-current_cplanes_lod_model[2])*
                      (current_cplanes_lod_model[5]+1-current_cplanes_lod_model[4]);
     LODFloatArray = new float [LOD_num_pixels];
-
+    cout << current_cplanes_lod_model[0] << ' ' << current_cplanes_lod_model[2] << ' ' << current_cplanes_lod_model[4] << endl;
+    cout << new_dim_x << ' ' << new_dim_y << ' ' << new_dim_z << endl;
     for (int i = 0, x = current_cplanes_lod_model[0]; i < new_dim_x; i++, x++){
-      for (int j = 0, y = current_cplanes_lod_model[2]; i < new_dim_y; j++, y++){
-        for (int k = 0, z = current_cplanes_lod_model[4]; i < new_dim_z; k++, z++){
+      for (int j = 0, y = current_cplanes_lod_model[2]; j < new_dim_y; j++, y++){
+        for (int k = 0, z = current_cplanes_lod_model[4]; k < new_dim_z; k++, z++){
           *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = *(floatArray + x + y*dimx + z*dimx*dimy);
         }
       }
     }
+    cout << "Finished generating largest LOD model" << endl;
     return &LODFloatArray[0];
     
   } else {
@@ -269,7 +271,10 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
 
     delete [] LODFloatArray;
     LOD_num_pixels = new_dim_x*new_dim_y*new_dim_z;
+    LOD_num_bytes = LOD_num_pixels*4;
     LODFloatArray = new float [LOD_num_pixels];
+
+    cout << "Helllooo" << endl;
 
     // Now: need to sample a LOD cube of these dimensions from the cropping region (which is the same).
     for (int i=0; i<new_dim_x; i++){
@@ -281,6 +286,7 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
         }
       }
     }
+    cout << "Finished generating new LOD model." << endl;
     return &LODFloatArray[0];
   }
 }
