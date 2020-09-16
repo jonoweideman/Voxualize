@@ -496,7 +496,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     volumeMapper = vtkSmartPointer<vtkSmartVolumeMapper>::New();
     volumeMapper->SetBlendModeToComposite(); // composite first
     volumeMapper->SetInputConnection(imageImport->GetOutputPort());
-    //volumeMapper->CroppingOn();
+    volumeMapper->CroppingOn();
 
     // Create the standard renderer, render window
     // and interactor
@@ -575,6 +575,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
     ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
     ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
+    ren1->GetActiveCamera()->SetDistance(distance);
     colorTransferFunction->RemoveAllPoints();
     colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
     colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
@@ -588,9 +589,9 @@ class GreeterServiceImpl final : public Greeter::Service {
                                           << ' ' << cplanes.Get(2)*dataCube.y_scale_factor << ' ' << cplanes.Get(3)*dataCube.y_scale_factor 
                                           << ' ' << cplanes.Get(4)*dataCube.z_scale_factor << ' ' << cplanes.Get(5)*dataCube.z_scale_factor << endl;
 
-    //volumeMapper->SetCroppingRegionPlanes(cplanes.Get(0)*dataCube.x_scale_factor, cplanes.Get(1)*dataCube.x_scale_factor, 
-      //                                    cplanes.Get(2)*dataCube.y_scale_factor, cplanes.Get(3)*dataCube.y_scale_factor, 
-     //                                     cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor);
+    volumeMapper->SetCroppingRegionPlanes(cplanes.Get(0)*dataCube.x_scale_factor, cplanes.Get(1)*dataCube.x_scale_factor, 
+                                         cplanes.Get(2)*dataCube.y_scale_factor, cplanes.Get(3)*dataCube.y_scale_factor, 
+                                         cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor);
     //cout << "Sleep 1..." << endl;
     //sleep(5);
     //renWin->SwapBuffersOff();
