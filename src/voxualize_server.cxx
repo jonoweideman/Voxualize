@@ -7,7 +7,7 @@
 #include <chrono>
 #include <thread>
 #include <vector>
-//#include "zfp.h"
+#include "zfp.h"
 
 // ffmpeg
 extern "C" {
@@ -385,11 +385,12 @@ class GreeterServiceImpl final : public Greeter::Service {
     // for ( int i=180000; i<180100; i++){
     //   cout << *(pixelDataFloats+1) << ' ';
     // }
+
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
-    //AVPacket * pkt = encodePixelData(pixelData, request);
-    //reply->set_size_in_bytes(pkt->size);
-    number_of_bytes = imageData->GetNumberOfPoints()*4;
-    reply->set_size_in_bytes(imageData->GetNumberOfPoints()*4);
+    AVPacket * pkt = encodePixelData(pixelData, request);
+    reply->set_size_in_bytes(pkt->size);
+    //number_of_bytes = imageData->GetNumberOfPoints()*4;
+    //reply->set_size_in_bytes(imageData->GetNumberOfPoints()*4);
     return Status::OK;
   }
 
@@ -875,13 +876,13 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   void streamHQRender(ServerWriter<DataModel> *writer){
     cout << "Streaming HQ Render" << endl;
-    //char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
-    char * encodedData = reinterpret_cast<char *>(pixelData);
+    char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
+    //char * encodedData = reinterpret_cast<char *>(pixelData);
     // for ( int i=100000; i<100100; i++){
     //   cout << +*(encodedData+i) << ' ';
     // }
-    //int num_bytes_tmp  = encodedFramePkt.size;
-    int num_bytes_tmp = number_of_bytes;
+    int num_bytes_tmp  = encodedFramePkt.size;
+    //int num_bytes_tmp = number_of_bytes;
 
     cout << "Starting to write encoded frame to stream: " << bytes_per_write << ' ' << num_bytes_tmp << endl;
     DataModel d;
@@ -905,45 +906,45 @@ class GreeterServiceImpl final : public Greeter::Service {
     }
   }
 
-//   int Compress(float* array, vector<char>* compression_buffer, size_t* compressed_size, 
-//                uint32_t nx, uint32_t ny, uint32 nz, uint32_t precision) {
-//     int status = 0;     /* return value: 0 = success */
-//     zfp_type type;      /* array scalar type */
-//     zfp_field* field;   /* array meta data */
-//     zfp_stream* zfp;    /* compressed stream */
-//     size_t buffer_size; /* byte size of compressed buffer */
-//     bitstream* stream;  /* bit stream to write to or read from */
+  int Compress(float* array, vector<char>* compression_buffer, size_t* compressed_size, 
+               uint32_t nx, uint32_t ny, uint32 nz, uint32_t precision) {
+    int status = 0;     /* return value: 0 = success */
+    zfp_type type;      /* array scalar type */
+    zfp_field* field;   /* array meta data */
+    zfp_stream* zfp;    /* compressed stream */
+    size_t buffer_size; /* byte size of compressed buffer */
+    bitstream* stream;  /* bit stream to write to or read from */
 
-//     type = zfp_type_float;
-//     field = zfp_field_3d(array, type, nx, ny, nz);
+    type = zfp_type_float;
+    field = zfp_field_3d(array, type, nx, ny, nz);
 
-//     /* allocate meta data for a compressed stream */
-//     zfp = zfp_stream_open(nullptr);
+    /* allocate meta data for a compressed stream */
+    zfp = zfp_stream_open(nullptr);
 
-//     /* set compression mode and parameters via one of three functions */
-//     zfp_stream_set_precision(zfp, precision);
+    /* set compression mode and parameters via one of three functions */
+    zfp_stream_set_precision(zfp, precision);
 
-//     /* allocate buffer for compressed data */
-//     buffer_size = zfp_stream_maximum_size(zfp, field);
-//     if (compression_buffer->size() < buffer_size) {
-//         compression_buffer->resize(buffer_size);
-//     }
-//     stream = stream_open(compression_buffer->data(), buffer_size);
-//     zfp_stream_set_bit_stream(zfp, stream);
-//     zfp_stream_rewind(zfp);
+    /* allocate buffer for compressed data */
+    buffer_size = zfp_stream_maximum_size(zfp, field);
+    if (compression_buffer->size() < buffer_size) {
+        compression_buffer->resize(buffer_size);
+    }
+    stream = stream_open(compression_buffer->data(), buffer_size);
+    zfp_stream_set_bit_stream(zfp, stream);
+    zfp_stream_rewind(zfp);
 
-//     *compressed_size = zfp_compress(zfp, field);
-//     if (!(*compressed_size)) {
-//         status = 1;
-//     }
+    *compressed_size = zfp_compress(zfp, field);
+    if (!(*compressed_size)) {
+        status = 1;
+    }
 
-//     /* clean up */
-//     zfp_field_free(field);
-//     zfp_stream_close(zfp);
-//     stream_close(stream);
+    /* clean up */
+    zfp_field_free(field);
+    zfp_stream_close(zfp);
+    stream_close(stream);
 
-//     return status;
-// }
+    return status;
+}
 
 };
 
