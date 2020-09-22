@@ -323,6 +323,8 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   unsigned char * pointer;
 
+  int oldSB;
+
   // Service to return the data of a specified file, and starts the EGL render on the server.
   Status ChooseFile(ServerContext *context, const FileDetails *request,
                   DimensionDetails *reply) override {
@@ -392,6 +394,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
     AVPacket * pkt = encodePixelData(pixelData, request);
     reply->set_size_in_bytes(pkt->size);
+    // reply->window_width(1836);
+    // reply->window_height(500);
     // for ( int i=180000; i<180100; i++){
     //   cout << *(pixelDataFloats+1) << ' ';
     // }
@@ -546,7 +550,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->ResetCamera();
     //renWin->SwapBuffersOff();
     cout << "Is current? : " << renWin->IsCurrent() << endl;
-    renWin->SetSize(600, 600);
+    renWin->SetSize(1836, 500);
 
     //renWin->Render();
     //renWin->Frame();
@@ -576,7 +580,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     
     renWin -> Finalize();
     renWin-> Initialize();
-    renWin->SetSize(600, 600);
+    renWin->SetSize(1836, 500);
     // Set variables.
     //ren1->ResetCamera();
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
@@ -610,11 +614,15 @@ class GreeterServiceImpl final : public Greeter::Service {
     //cout << "Sleep 3..." << endl;
     //sleep(5);
     renWin->WaitForCompletion();
+    //renWin->CopyResultFrame();
     //cout << "Done!" << endl;
     cout << "Is current? : " << renWin->IsCurrent() << endl;
 
-    // int oldSB = renWin->GetSwapBuffers();
-    //renWin->SwapBuffersOff();
+    oldSB = renWin->GetSwapBuffers();
+    renWin->SwapBuffersOff();
+
+    // //restore swapping state
+    // renWin->SetSwapBuffers(oldSB);
 
     captureScreenShotOfCurrentEGLRender();
 
@@ -625,9 +633,6 @@ class GreeterServiceImpl final : public Greeter::Service {
     windowToImageFilter->ReadFrontBufferOff(); // read from the back buffer
     windowToImageFilter->Update();
 
-    // restore swapping state
-    // renWin->SetSwapBuffers(oldSB);
-
     imageData = windowToImageFilter->GetOutput();
 
     //cout << imageData->GetNumberOfCells() << endl;
@@ -637,10 +642,12 @@ class GreeterServiceImpl final : public Greeter::Service {
     std::cout << "Dims: " << " x: " << dims[0] << " y: " << dims[1] << " z: " << dims[2] << std::endl;
     //imageData -> PrintSelf(cout, vtkIndent(2)) ;
     pointer = static_cast<unsigned char *>(imageData->GetScalarPointer(0,0,0));
-    //pointer = reinterpret_cast<unsigned char *>(renWin->GetRGBAPixelData(0,599,0, 599, 0, 0));
+    //pointer = reinterpret_cast<unsigned char *>(renWin->GetPixelData(0,599,0, 599, 0, 0));
+    // restore swapping state
     for ( int i=0; i<100; i++){
       cout << +*(pointer+i) << ' ';
     }
+    renWin->SetSwapBuffers(oldSB);
     //renWin->Initialize();
     //renWin->AddRenderer(ren1);
     return pointer;
@@ -672,8 +679,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     /* put sample parameters */
     c->bit_rate = 400000;
     /* resolution must be a multiple of two */
-    c->width = 600;
-    c->height = 600;
+    c->width = 1836;
+    c->height = 500;
     /* frames per second */
     c->time_base = (AVRational){1, 1};
     //c->framerate = (AVRational){1, 1};
@@ -682,7 +689,7 @@ class GreeterServiceImpl final : public Greeter::Service {
                       // within that picture, and not any other pictures.
     c->max_b_frames = 0;
 
-    c->pix_fmt = AV_PIX_FMT_YUV420P;
+    c->pix_fmt = AV_PIX_FMT_YUVJ420P;
     c->profile = FF_PROFILE_H264_CONSTRAINED_BASELINE;
 
     if (codec->id == AV_CODEC_ID_H264)
@@ -707,7 +714,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     /* the image can be allocated by any means and av_image_alloc() is
      * just the most convenient way if av_malloc() is to be used */
     ret = av_image_alloc(frame->data, frame->linesize, c->width, c->height,
-                         c->pix_fmt, 24);
+                         c->pix_fmt, 32);
     if (ret < 0) {
         fprintf(stderr, "Could not allocate raw picture buffer\n");
         exit(6);
@@ -717,7 +724,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     
     SwsContext * ctx = sws_getContext(c->width, c->height,
                                       AV_PIX_FMT_RGB24, c->width, c->height,
-                                      AV_PIX_FMT_YUV420P, 0, 0, 0, 0);
+                                      AV_PIX_FMT_YUVJ420P, 0, 0, 0, 0);
+
+    //ctx->color_range = AVCOL_RANGE_JPEG;
 
     av_init_packet(pkt);
     pkt->data = NULL;    // packet data will be allocated by the encoder
