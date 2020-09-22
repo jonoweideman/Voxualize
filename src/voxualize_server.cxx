@@ -318,6 +318,9 @@ class GreeterServiceImpl final : public Greeter::Service {
   int number_of_bytes;
   bool is_egl_started;
 
+  int window_width;
+  int window_height;
+
   unsigned char * pointer;
 
   // Service to return the data of a specified file, and starts the EGL render on the server.
@@ -389,6 +392,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     // Encode with NVENC / FFMPEG ? Again return a pointer to encoded data
     AVPacket * pkt = encodePixelData(pixelData, request);
     reply->set_size_in_bytes(pkt->size);
+    // for ( int i=180000; i<180100; i++){
+    //   cout << *(pixelDataFloats+1) << ' ';
+    // }
     //number_of_bytes = imageData->GetNumberOfPoints()*4;
     //reply->set_size_in_bytes(imageData->GetNumberOfPoints()*4);
     return Status::OK;
@@ -532,8 +538,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     volume->SetMapper(volumeMapper);
     volume->SetProperty(volumeProperty);
 
+    ren1->SetBackground(220, 185, 152);
     ren1->AddVolume(volume);
-    ren1->SetBackground(colors->GetColor3d("Wheat").GetData());
     ren1->GetActiveCamera()->Azimuth(45);
     ren1->GetActiveCamera()->Elevation(30);
     ren1->ResetCameraClippingRange();
@@ -565,8 +571,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     const google::protobuf::RepeatedField<float> cplanes = request->cropping_planes();
     const float alpha = request->alpha();
     const double distance = request->distance();
-    const int window_width = request->window_width();
-    const int window_height = request->window_height();
+    window_width = request->window_width();
+    window_height = request->window_height();
     
     renWin -> Finalize();
     renWin-> Initialize();
@@ -575,8 +581,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     //ren1->ResetCamera();
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
     ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
-    ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
-    ren1->GetActiveCamera()->SetDistance(distance);
+    //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
+    //ren1->GetActiveCamera()->SetDistance(distance);
     colorTransferFunction->RemoveAllPoints();
     colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
     colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
@@ -590,9 +596,9 @@ class GreeterServiceImpl final : public Greeter::Service {
                                           << ' ' << cplanes.Get(2)*dataCube.y_scale_factor << ' ' << cplanes.Get(3)*dataCube.y_scale_factor 
                                           << ' ' << cplanes.Get(4)*dataCube.z_scale_factor << ' ' << cplanes.Get(5)*dataCube.z_scale_factor << endl;
 
-    volumeMapper->SetCroppingRegionPlanes(cplanes.Get(0)*dataCube.x_scale_factor, cplanes.Get(1)*dataCube.x_scale_factor, 
-                                         cplanes.Get(2)*dataCube.y_scale_factor, cplanes.Get(3)*dataCube.y_scale_factor, 
-                                         cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor);
+   volumeMapper->SetCroppingRegionPlanes(cplanes.Get(0)*dataCube.x_scale_factor, cplanes.Get(1)*dataCube.x_scale_factor, 
+                                        cplanes.Get(2)*dataCube.y_scale_factor, cplanes.Get(3)*dataCube.y_scale_factor, 
+                                        cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor*((double)(dataCube.dimx) / dataCube.dimz));
     //cout << "Sleep 1..." << endl;
     //sleep(5);
     //renWin->SwapBuffersOff();
@@ -615,7 +621,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     vtkSmartPointer<vtkWindowToImageFilter> windowToImageFilter = 
       vtkSmartPointer<vtkWindowToImageFilter>::New();
     windowToImageFilter->SetInput(renWin);
-    windowToImageFilter->SetInputBufferTypeToRGBA(); //also record the alpha (transparency) channel
+    windowToImageFilter->SetInputBufferTypeToRGB(); //also record the alpha (transparency) channel
     windowToImageFilter->ReadFrontBufferOff(); // read from the back buffer
     windowToImageFilter->Update();
 
@@ -631,9 +637,10 @@ class GreeterServiceImpl final : public Greeter::Service {
     std::cout << "Dims: " << " x: " << dims[0] << " y: " << dims[1] << " z: " << dims[2] << std::endl;
     //imageData -> PrintSelf(cout, vtkIndent(2)) ;
     pointer = static_cast<unsigned char *>(imageData->GetScalarPointer(0,0,0));
-    // for ( int i=100000; i<100100; i++){
-    //   cout << +*(pointer+i) << ' ';
-    // }
+    //pointer = reinterpret_cast<unsigned char *>(renWin->GetRGBAPixelData(0,599,0, 599, 0, 0));
+    for ( int i=0; i<100; i++){
+      cout << +*(pointer+i) << ' ';
+    }
     //renWin->Initialize();
     //renWin->AddRenderer(ren1);
     return pointer;
@@ -700,7 +707,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     /* the image can be allocated by any means and av_image_alloc() is
      * just the most convenient way if av_malloc() is to be used */
     ret = av_image_alloc(frame->data, frame->linesize, c->width, c->height,
-                         c->pix_fmt, 32);
+                         c->pix_fmt, 24);
     if (ret < 0) {
         fprintf(stderr, "Could not allocate raw picture buffer\n");
         exit(6);
@@ -709,7 +716,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     uint8_t *rgba32Data = reinterpret_cast<uint8_t*>(pixelData);
     
     SwsContext * ctx = sws_getContext(c->width, c->height,
-                                      AV_PIX_FMT_RGBA, c->width, c->height,
+                                      AV_PIX_FMT_RGB24, c->width, c->height,
                                       AV_PIX_FMT_YUV420P, 0, 0, 0, 0);
 
     av_init_packet(pkt);
@@ -720,7 +727,7 @@ class GreeterServiceImpl final : public Greeter::Service {
 
     uint8_t * inData[1] = { rgba32Data }; // RGBA32 have one plane
 
-    int inLinesize[1] = { 4*c->width }; // RGBA stride
+    int inLinesize[1] = { 3*c->width }; // RGBA stride
 
     sws_scale(ctx, inData, inLinesize, 0, c->height, frame->data, frame->linesize);
     
@@ -781,7 +788,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     vtkSmartPointer<vtkWindowToImageFilter> windowToImageFilter = 
       vtkSmartPointer<vtkWindowToImageFilter>::New();
     windowToImageFilter->SetInput(renWin);
-    windowToImageFilter->SetInputBufferTypeToRGBA(); //also record the alpha (transparency) channel
+    windowToImageFilter->SetInputBufferTypeToRGB(); //also record the alpha (transparency) channel
     windowToImageFilter->ReadFrontBufferOff(); // read from the back buffer
     windowToImageFilter->Update();
     
