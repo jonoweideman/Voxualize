@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 #include "zfp.h"
+#include <mutex> 
 
 // ffmpeg
 extern "C" {
@@ -325,9 +326,12 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   int oldSB;
 
+  std::mutex mtx;
+
   // Service to return the data of a specified file, and starts the EGL render on the server.
   Status ChooseFile(ServerContext *context, const FileDetails *request,
                   DimensionDetails *reply) override {
+    mtx.lock();
     cout << "ChooseFile rpc" << endl;
     std::string file_name(request->file_name());
     dataCube.createCube(file_name);
@@ -362,22 +366,25 @@ class GreeterServiceImpl final : public Greeter::Service {
     std:: cout << reply->lod_num_bytes()<<endl;
 
     //createEGLRenderOnServer();
-
+    mtx.unlock();
     return Status::OK;
   }
 
   Status ListFiles(ServerContext *context, const FilesRequest *request,
                   FilesList *reply) override {
+    mtx.lock();
     // Retrieve a list of files to view
     std::cout<< "ListFiles rpc" << std::endl;
     fs::path dir_path("../../../Data/");
     createFilesListResponse( dir_path, reply);
     is_egl_started = false;
+    mtx.unlock();
     return Status::OK;
   }
 
   Status GetHQRenderSize(ServerContext *context, const CameraInfo *request,
                         HQRenderInfo *reply) override {
+    mtx.lock();
     cout << "GetHQRenderSize rpc" << endl;
     if (!is_egl_started){
       createEGLRenderOnServer();
@@ -401,6 +408,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     // }
     //number_of_bytes = imageData->GetNumberOfPoints()*4;
     //reply->set_size_in_bytes(imageData->GetNumberOfPoints()*4);
+    mtx.unlock();
     return Status::OK;
   }
 
@@ -437,6 +445,7 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   Status GetModelData(ServerContext *context, const GetDataRequest *request,
                             ServerWriter<DataModel> *writer) override {
+    mtx.lock();
     cout << "GetModelData rpc" << endl;
 
     switch (request->data_object()) {
@@ -463,12 +472,13 @@ class GreeterServiceImpl final : public Greeter::Service {
     //streamLODModel(writer, &dataCube);
 
     //createEGLRenderOnServer();
-
+    mtx.unlock();
     return Status::OK;
   }
 
   Status GetNewROILODSize(ServerContext *context, const CameraInfo *request,
                             ROILODInfo *reply) override {
+    mtx.lock();
     // Given the cropping planes info, compute new LOD model.
     cout << "GetNewROILODSize rpc" << endl;
     const google::protobuf::RepeatedField<float> cplanes = request->cropping_planes();
@@ -484,6 +494,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     reply->add_dimensions_lod(dataCube.new_dim_y);
     reply->add_dimensions_lod(dataCube.new_dim_z);
     cout << "Finished GetNewROILODSize rpc" << endl;
+    mtx.unlock();
     return Status::OK;
   }
 
