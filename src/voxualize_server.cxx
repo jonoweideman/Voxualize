@@ -580,7 +580,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     
     renWin -> Finalize();
     renWin-> Initialize();
-    renWin->SetSize(1836, 500);
+    renWin->SetSize(window_width, window_height);
     // Set variables.
     //ren1->ResetCamera();
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
@@ -679,8 +679,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     /* put sample parameters */
     c->bit_rate = 400000;
     /* resolution must be a multiple of two */
-    c->width = 1836;
-    c->height = 500;
+    c->width = window_width;
+    c->height = window_height;
     /* frames per second */
     c->time_base = (AVRational){1, 1};
     //c->framerate = (AVRational){1, 1};
@@ -733,7 +733,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     pkt->size = 0;
 
     fflush(stdout);
-
+ 
     uint8_t * inData[1] = { rgba32Data }; // RGBA32 have one plane
 
     int inLinesize[1] = { 3*c->width }; // RGBA stride
