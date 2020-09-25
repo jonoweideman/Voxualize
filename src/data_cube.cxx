@@ -221,6 +221,10 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
     new_dim_y = current_cplanes_lod_model[3]+1-current_cplanes_lod_model[2];
     new_dim_z = current_cplanes_lod_model[5]+1-current_cplanes_lod_model[4];
 
+    x_scale_factor = 1;
+    y_scale_factor = 1;
+    z_scale_factor = 1;
+
     delete [] LODFloatArray;
     LOD_num_pixels = (current_cplanes_lod_model[1]+1-current_cplanes_lod_model[0])*
                      (current_cplanes_lod_model[3]+1-current_cplanes_lod_model[2])*
