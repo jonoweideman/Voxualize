@@ -8,7 +8,8 @@
 #include <thread>
 #include <vector>
 #include "zfp.h"
-#include <mutex> 
+#include <mutex>
+#include<thread>
 
 // ffmpeg
 extern "C" {
@@ -327,6 +328,7 @@ class GreeterServiceImpl final : public Greeter::Service {
   int oldSB;
 
   std::mutex mtx;
+  thread start_render_thread;
 
   // Service to return the data of a specified file, and starts the EGL render on the server.
   Status ChooseFile(ServerContext *context, const FileDetails *request,
@@ -365,7 +367,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     // reply->set_lod_num_bytes(dc->LOD_num_bytes);
     // std:: cout << reply->lod_num_bytes()<<endl;
 
-    //createEGLRenderOnServer(); // would be nice if this is done with a new thread and is thread-safe.
+    start_render_thread = std::thread(&GreeterServiceImpl::createEGLRenderOnServer, this); // would be nice if this is done with a new thread and is thread-safe.
+    //start_render_thread.detach();
+    //start_render_thread.join();
     streamLODModel(writer);
     mtx.unlock();
     return Status::OK;
@@ -385,12 +389,17 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   Status GetHQRender(ServerContext *context, const CameraInfo *request,
                         ServerWriter<HQRender> *writer) override {
-    mtx.lock();
-    cout << "GetHQRender rpc" << endl;
-    if (!is_egl_started){
-      createEGLRenderOnServer();
+    if (is_egl_started == false) {
+      start_render_thread.join(); // This RPC wont execute untill the egl render is set up.
       is_egl_started = true;
     }
+    
+    mtx.lock();
+    cout << "GetHQRender rpc" << endl;
+    // if (!is_egl_started){
+    //   createEGLRenderOnServer();
+    //   is_egl_started = true;
+    // }
     // Get pointer to data.
     pixelData = updateCameraAndGetData(request); //and save screenshot....for now.
 
