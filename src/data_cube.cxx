@@ -185,9 +185,12 @@ float * DataCube::generateLODModel(int size_in_mb){
 float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
   cout << "Cropping_dims on backend: " << current_cplanes_lod_model[0] << ' ' << current_cplanes_lod_model[1] << ' ' << current_cplanes_lod_model[2] << endl;
   cout << current_cplanes_lod_model[3] << ' ' << current_cplanes_lod_model[4] << ' ' << current_cplanes_lod_model[5] << endl;
+  
+  cout << "Requested cropping dims new LOD: " << cropping_dims[0] << ' ' << cropping_dims[1] << ' '  << cropping_dims[2] << endl;
+  cout << cropping_dims[3] << ' ' << cropping_dims[4] << ' '  << cropping_dims[5] << endl;
   if (cropping_dims[0]!=0 || cropping_dims[1]+1!=new_dim_x
-      || cropping_dims[2]!=0 && cropping_dims[3]+1!=new_dim_y
-      || cropping_dims[4]!=0 && cropping_dims[5]+1!=new_dim_z){
+      || cropping_dims[2]!=0 || cropping_dims[3]+1!=new_dim_y
+      || cropping_dims[4]!=0 || cropping_dims[5]+1!=new_dim_z){
     // New ROI.
     cout << "New ROI requested" << endl;
     cout << "Cropping_dims requested: " << cropping_dims[0] << ' ' << cropping_dims[1] << ' ' << cropping_dims[2] << endl;

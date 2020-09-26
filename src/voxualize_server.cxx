@@ -228,7 +228,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     imageImport->SetDataExtentToWholeExtent();
     imageImport->SetImportVoidPointer(floatArray->GetVoidPointer(0));
     imageImport->SetNumberOfScalarComponents(1);
-    imageImport->SetDataSpacing(1.0, (double)(dataCube.dimx) / dataCube.dimy, (double)(dataCube.dimx) / dataCube.dimz);
+    //imageImport->SetDataSpacing(1.0, (double)(dataCube.dimx) / dataCube.dimy, (double)(dataCube.dimx) / dataCube.dimz);
+    imageImport->SetDataSpacing(1.0, 1.0, 1.0);
     imageImport->Update();
 
     // The mapper / ray cast function know how to render the data
@@ -313,7 +314,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     //ren1->ResetCamera();
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
     ren1->GetActiveCamera()->SetViewUp(view_up.Get(0),view_up.Get(1),view_up.Get(2));
-    //ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0),focal_point.Get(1),focal_point.Get(2));
+    ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0)*dataCube.x_scale_factor,focal_point.Get(1)*dataCube.y_scale_factor,focal_point.Get(2)*dataCube.z_scale_factor);
     //ren1->GetActiveCamera()->SetDistance(distance);
     colorTransferFunction->RemoveAllPoints();
     colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
@@ -330,7 +331,7 @@ class GreeterServiceImpl final : public Greeter::Service {
 
    volumeMapper->SetCroppingRegionPlanes(cplanes.Get(0)*dataCube.x_scale_factor, cplanes.Get(1)*dataCube.x_scale_factor, 
                                         cplanes.Get(2)*dataCube.y_scale_factor, cplanes.Get(3)*dataCube.y_scale_factor, 
-                                        cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor*((double)(dataCube.dimx) / dataCube.dimz));
+                                        cplanes.Get(4)*dataCube.z_scale_factor, cplanes.Get(5)*dataCube.z_scale_factor);
     //cout << "Sleep 1..." << endl;
     //sleep(5);
     //renWin->SwapBuffersOff();
