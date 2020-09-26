@@ -129,6 +129,17 @@ class GreeterServiceImpl final : public Greeter::Service {
     mtx.lock();
     cout << "ChooseFile rpc" << endl;
     std::string file_name(request->file_name());
+    switch (request->s_method()) {
+      case FileDetails::Max :
+        dataCube.s_method = "Max";
+        break;
+      case FileDetails::Mean :
+        dataCube.s_method = "Mean";
+        break;
+      default :
+        dataCube.s_method = "Max";
+        break;
+    }
     dataCube.createCube(file_name);
     float cropping_dims[3];
     cropping_dims[0] = dataCube.dimx; cropping_dims[1] = dataCube.dimy; cropping_dims[2] = dataCube.dimz;
@@ -195,6 +206,17 @@ class GreeterServiceImpl final : public Greeter::Service {
   Status GetNewROILOD(ServerContext *context, const CameraInfo *request,
                             ServerWriter<ROILOD> *writer) override {
     mtx.lock();
+    switch (request->s_method()) {
+      case CameraInfo::Max :
+        dataCube.s_method = "Max";
+        break;
+      case CameraInfo::Mean :
+        dataCube.s_method = "Mean";
+        break;
+      default :
+        dataCube.s_method = "Max";
+        break;
+    }
     // Given the cropping planes info, compute new LOD model.
     cout << "GetNewROILOD rpc" << endl;
     const google::protobuf::RepeatedField<float> cplanes = request->cropping_planes();

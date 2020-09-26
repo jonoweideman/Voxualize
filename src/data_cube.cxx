@@ -170,12 +170,24 @@ float * DataCube::generateLODModel(int size_in_mb){
 
   cout << x_scale_factor << ' ' << y_scale_factor << ' ' << z_scale_factor << endl;
 
-  for (int i=0; i<new_dim_x; i++){
-    for (int j=0; j<new_dim_y; j++){
-      for (int k=0; k<new_dim_z; k++){
-        // Calc mean/min/max/etc...
-        *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k);
-        //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
+  if (s_method == "Max") {
+    for (int i=0; i<new_dim_x; i++){
+      for (int j=0; j<new_dim_y; j++){
+        for (int k=0; k<new_dim_z; k++){
+          // Calc mean/min/max/etc...
+          *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k);
+          //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
+        }
+      }
+    }
+  } else {
+    for (int i=0; i<new_dim_x; i++){
+      for (int j=0; j<new_dim_y; j++){
+        for (int k=0; k<new_dim_z; k++){
+          // Calc mean/min/max/etc...
+          *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
+          //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
+        }
       }
     }
   }
@@ -284,12 +296,24 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
     LODFloatArray = new float [LOD_num_pixels];
 
     // Now: need to sample a LOD cube of these dimensions from the cropping region (which is the same).
-    for (int i=0; i<new_dim_x; i++){
-      for (int j=0; j<new_dim_y; j++){
-        for (int k=0; k<new_dim_z; k++){
-          // Calc mean/min/max/etc...
-          *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k, &current_cplanes_lod_model[0]);
-          //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
+    if (s_method == "Max") {
+      for (int i=0; i<new_dim_x; i++){
+        for (int j=0; j<new_dim_y; j++){
+          for (int k=0; k<new_dim_z; k++){
+            // Calc mean/min/max/etc...
+            *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k, &current_cplanes_lod_model[0]);
+            //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
+          }
+        }
+      }
+    } else {
+      for (int i=0; i<new_dim_x; i++){
+        for (int j=0; j<new_dim_y; j++){
+          for (int k=0; k<new_dim_z; k++){
+            // Calc mean/min/max/etc...
+            *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k, &current_cplanes_lod_model[0]);
+            //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
+          }
         }
       }
     }
@@ -344,6 +368,24 @@ float DataCube::calculateMean(int i, int j, int k){
   }
   return sum_pixels / temp_num_pixels;
 }
+
+float DataCube::calculateMean(int i, int j, int k, int * cplanes){
+  float sum_pixels = 0;
+  int temp_num_pixels = 0;
+  for (int x = floor((float)cplanes[0]+i*x_scale_factor); x < ceil((float)cplanes[0]+(i+1)*x_scale_factor) && x < cplanes[1]; x++){
+    for (int y = floor((float)cplanes[2]+j*y_scale_factor); y < ceil((float)cplanes[2]+(j+1)*y_scale_factor) && y < cplanes[3]; y++){
+      for (int z = floor((float)cplanes[4]+k*z_scale_factor); z < ceil((float)cplanes[4]+(k+1)*z_scale_factor) && z < cplanes[5]; z++){
+        float temp = *(floatArray + x + y*dimx + z*dimx*dimy);
+        if (isfinite(temp)){
+          sum_pixels += temp;
+          temp_num_pixels++;
+        }
+      }
+    }
+  }
+  return sum_pixels / temp_num_pixels;
+}
+
 
 char * DataCube::getBytePointerFullModel(){
   return reinterpret_cast<char *>(floatArray);

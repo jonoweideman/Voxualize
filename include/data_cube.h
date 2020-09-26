@@ -21,6 +21,7 @@ class DataCube{
     size_t LOD_num_bytes;
     int lod_current_size_in_mb;
     int current_cplanes_lod_model[6]; //Relative to the entire model. Need to keep track of.
+    std::string s_method;
 
     bool constructedCorrectly;
     DataCube(void);
@@ -34,6 +35,7 @@ class DataCube{
     float calculateMax(int i, int j, int k);
     float calculateMax(int i, int j, int k, int * cplanes);
     float calculateMean(int i, int j, int k);
+    float calculateMean(int i, int j, int k, int * cplanes);
 
     float * generateLODModel(int size_in_mb); //The default one
     float * generateLODModelNew(int size_in_mb, float * cropping_dims); // New mem size and/or ROI.
