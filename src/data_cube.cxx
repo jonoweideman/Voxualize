@@ -214,7 +214,29 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
     current_cplanes_lod_model[4] = ceil(cropping_dims[4]*z_scale_factor);
     current_cplanes_lod_model[5] = ceil(cropping_dims[5]*z_scale_factor);
   } else if (size_in_mb == lod_current_size_in_mb) {
-    cout << "Same cropping plans and size in mb detected. Hence no new cube will be generated." << endl;
+    cout << "Same cropping plans and size in mb detected." << endl;
+    // Now: need to sample a LOD cube of these dimensions from the cropping region (which is the same).
+    if (s_method == "Max") {
+      for (int i=0; i<new_dim_x; i++){
+        for (int j=0; j<new_dim_y; j++){
+          for (int k=0; k<new_dim_z; k++){
+            // Calc mean/min/max/etc...
+            *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k, &current_cplanes_lod_model[0]);
+            //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
+          }
+        }
+      }
+    } else {
+      for (int i=0; i<new_dim_x; i++){
+        for (int j=0; j<new_dim_y; j++){
+          for (int k=0; k<new_dim_z; k++){
+            // Calc mean/min/max/etc...
+            *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k, &current_cplanes_lod_model[0]);
+            //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
+          }
+        }
+      }
+    }
     return &LODFloatArray[0];
   }
 
