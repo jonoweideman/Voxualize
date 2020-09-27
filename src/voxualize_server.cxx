@@ -586,47 +586,47 @@ class GreeterServiceImpl final : public Greeter::Service {
   void streamLODModel(ServerWriter<ROILOD> *writer){
     //char * bytes = dataCube.getBytePointerLODModel();
     //Do zfp compression.
-    cout << "Zfp compressing LOD model..." << endl;
-    int status = Compress(dataCube.LODFloatArray,  &compression_buffer, &compression_size, 
-                          dataCube.new_dim_x, dataCube.new_dim_y, dataCube.new_dim_z, 11);
-    cout << "Finished compressing." << endl;
-    char * bytes = compression_buffer.data();
-    ROILOD d;
-    d.set_total_lod_bytes(dataCube.LOD_num_bytes);
-    d.add_dimensions_lod(dataCube.new_dim_x);
-    d.add_dimensions_lod(dataCube.new_dim_y);
-    d.add_dimensions_lod(dataCube.new_dim_z);
-    for (int i = 0; i < compression_size; i += bytes_per_write){
-      if ( compression_size - i < bytes_per_write){
-        d.set_bytes(bytes, compression_size - i);
-        d.set_num_bytes(compression_size - i);
-      } else {
-        d.set_bytes(bytes, bytes_per_write);
-        d.set_num_bytes(bytes_per_write);
-      }
-      writer->Write(d);
-      bytes += bytes_per_write; // Update the pointer.
-    }
-
-    // char * bytes = dataCube.getBytePointerLODModel();
+    // cout << "Zfp compressing LOD model..." << endl;
+    // int status = Compress(dataCube.LODFloatArray,  &compression_buffer, &compression_size, 
+    //                       dataCube.new_dim_x, dataCube.new_dim_y, dataCube.new_dim_z, 11);
+    // cout << "Finished compressing." << endl;
+    // char * bytes = compression_buffer.data();
     // ROILOD d;
     // d.set_total_lod_bytes(dataCube.LOD_num_bytes);
     // d.add_dimensions_lod(dataCube.new_dim_x);
     // d.add_dimensions_lod(dataCube.new_dim_y);
     // d.add_dimensions_lod(dataCube.new_dim_z);
-    // //cout << dataCube.LOD_num_bytes << endl;
-    // for (int i = 0; i < dataCube.LOD_num_bytes; i += bytes_per_write){
-    //   if ( dataCube.LOD_num_bytes - i < bytes_per_write){
-    //     d.set_bytes(bytes, dataCube.LOD_num_bytes - i);
-    //     d.set_num_bytes(dataCube.LOD_num_bytes - i);
+    // for (int i = 0; i < compression_size; i += bytes_per_write){
+    //   if ( compression_size - i < bytes_per_write){
+    //     d.set_bytes(bytes, compression_size - i);
+    //     d.set_num_bytes(compression_size - i);
     //   } else {
     //     d.set_bytes(bytes, bytes_per_write);
     //     d.set_num_bytes(bytes_per_write);
-    //     bytes += bytes_per_write; // Update the pointer.
     //   }
     //   writer->Write(d);
-    //   //bytes += bytes_per_write; // Update the pointer.
+    //   bytes += bytes_per_write; // Update the pointer.
     // }
+
+    char * bytes = dataCube.getBytePointerLODModel();
+    ROILOD d;
+    d.set_total_lod_bytes(dataCube.LOD_num_bytes);
+    d.add_dimensions_lod(dataCube.new_dim_x);
+    d.add_dimensions_lod(dataCube.new_dim_y);
+    d.add_dimensions_lod(dataCube.new_dim_z);
+    //cout << dataCube.LOD_num_bytes << endl;
+    for (int i = 0; i < dataCube.LOD_num_bytes; i += bytes_per_write){
+      if ( dataCube.LOD_num_bytes - i < bytes_per_write){
+        d.set_bytes(bytes, dataCube.LOD_num_bytes - i);
+        d.set_num_bytes(dataCube.LOD_num_bytes - i);
+      } else {
+        d.set_bytes(bytes, bytes_per_write);
+        d.set_num_bytes(bytes_per_write);
+        bytes += bytes_per_write; // Update the pointer.
+      }
+      writer->Write(d);
+      //bytes += bytes_per_write; // Update the pointer.
+    }
   }
 
   void streamHQRender(ServerWriter<HQRender> *writer){
