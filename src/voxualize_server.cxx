@@ -79,6 +79,7 @@ using voxualize::FilesList;
 using voxualize::CameraInfo;
 using voxualize::HQRender;
 using voxualize::ROILOD;
+using voxualize::Empty;
 
 using namespace std;
 
@@ -234,6 +235,12 @@ class GreeterServiceImpl final : public Greeter::Service {
     streamLODModel(writer);
     cout << "Finished GetNewROILOD rpc" << endl;
     mtx.unlock();
+    return Status::OK;
+  }
+
+  Status Reset(ServerContext *context, const CameraInfo *request,
+                            Empty *reply) override {
+    dataCube.generateLODModel(request->target_size_lod_bytes());
     return Status::OK;
   }
 
