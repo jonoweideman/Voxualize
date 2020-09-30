@@ -9,6 +9,8 @@ class DataCube{
     int dimx, dimy, dimz;
     size_t num_pixels;
     size_t num_bytes;
+    float max_pixel_val;
+    float min_pixel_val;
 
     // This should be templated. 
     float *floatArray; int* intArray; double* doubleArray; char* charArray; // Depending on the data type

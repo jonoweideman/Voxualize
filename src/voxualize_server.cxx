@@ -280,13 +280,13 @@ class GreeterServiceImpl final : public Greeter::Service {
     // Create transfer mapping scalar value to opacity
     // Data values for ds9.arr 540x450x201 are in range [-0.139794;0.153026]
     opacityTransferFunction = vtkSmartPointer<vtkPiecewiseFunction>::New();
-    opacityTransferFunction->AddPoint(-0.0, 0.0);
-    opacityTransferFunction->AddPoint(0.16, 1.0);
+    opacityTransferFunction->AddPoint(dataCube.min_pixel_val, 0.0);
+    opacityTransferFunction->AddPoint(dataCube.max_pixel_val, 1.0);
 
     // Create transfer mapping scalar value to color
     colorTransferFunction = vtkSmartPointer<vtkColorTransferFunction>::New();
-    colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
-    colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
+    colorTransferFunction->AddRGBPoint(dataCube.min_pixel_val, 0.0, 0.0, 0.0);
+    colorTransferFunction->AddRGBPoint(dataCube.max_pixel_val, 1.0, 1.0, 1.0);
 
     // The property describes how the data will look
     volumeProperty = vtkSmartPointer<vtkVolumeProperty>::New();
@@ -346,9 +346,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0)*dataCube.x_scale_factor,focal_point.Get(1)*dataCube.y_scale_factor,focal_point.Get(2)*dataCube.z_scale_factor);
     //ren1->GetActiveCamera()->SetDistance(distance);
     colorTransferFunction->RemoveAllPoints();
-    colorTransferFunction->AddRGBPoint(-0.0, 0.0, 0.0, 0.0);
-    colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
-    colorTransferFunction->AddRGBPoint(0.16, 1.0, 1.0, 1.0);
+    colorTransferFunction->AddRGBPoint(dataCube.min_pixel_val, 0.0, 0.0, 0.0);
+    colorTransferFunction->AddRGBPoint(dataCube.min_pixel_val, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
+    colorTransferFunction->AddRGBPoint(dataCube.max_pixel_val, 1.0, 1.0, 1.0);
 
 
     cout << "Trying to set cropping planes" << endl;

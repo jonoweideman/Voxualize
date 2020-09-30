@@ -127,6 +127,8 @@ float * DataCube::generateLODModel(int size_in_mb){
   current_cplanes_lod_model[0] = 0; current_cplanes_lod_model[1] = dimx-1;
   current_cplanes_lod_model[2] = 0; current_cplanes_lod_model[3] = dimy-1;
   current_cplanes_lod_model[4] = 0; current_cplanes_lod_model[5] = dimz-1;
+  max_pixel_val = -100000.0;
+  min_pixel_val = 1000000.0;
 
   lod_current_size_in_mb = size_in_mb;
 
@@ -191,6 +193,8 @@ float * DataCube::generateLODModel(int size_in_mb){
       }
     }
   }
+  cout << "Max_pixel_val = " << max_pixel_val << endl;
+  cout << "Min_pixel_val = " << min_pixel_val << endl;
   return LODFloatArray;
 }
 
@@ -350,6 +354,11 @@ float DataCube::calculateMax(int i, int j, int k){
     for (int y = floor(j*y_scale_factor); y < ceil((j+1)*y_scale_factor) && y < dimy; y++){
       for (int z = floor(k*z_scale_factor); z < ceil((k+1)*z_scale_factor) && z < dimz; z++){
         float temp = *(floatArray + x + y*dimx + z*dimx*dimy);
+        if (temp > max_pixel_val){
+          max_pixel_val = temp;
+        }
+        if (temp < min_pixel_val)
+          min_pixel_val = temp;
         if (isfinite(temp) && temp > max_pixel){
           max_pixel = temp;
         }
@@ -365,6 +374,11 @@ float DataCube::calculateMax(int i, int j, int k, int * cplanes){
     for (int y = floor((float)cplanes[2]+j*y_scale_factor); y < ceil((float)cplanes[2]+(j+1)*y_scale_factor) && y < cplanes[3]; y++){
       for (int z = floor((float)cplanes[4]+k*z_scale_factor); z < ceil((float)cplanes[4]+(k+1)*z_scale_factor) && z < cplanes[5]; z++){
         float temp = *(floatArray + x + y*dimx + z*dimx*dimy);
+        if (temp > max_pixel_val){
+          max_pixel_val = temp;
+        }
+        if (temp < min_pixel_val)
+          min_pixel_val = temp;
         if (isfinite(temp) && temp > max_pixel){
           max_pixel = temp;
         }
