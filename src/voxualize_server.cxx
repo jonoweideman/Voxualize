@@ -280,7 +280,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     // Create transfer mapping scalar value to opacity
     // Data values for ds9.arr 540x450x201 are in range [-0.139794;0.153026]
     opacityTransferFunction = vtkSmartPointer<vtkPiecewiseFunction>::New();
-    opacityTransferFunction->AddPoint(dataCube.min_pixel_val, 0.0);
+    opacityTransferFunction->AddPoint(0.0, 0.0);
     opacityTransferFunction->AddPoint(dataCube.max_pixel_val, 1.0);
 
     // Create transfer mapping scalar value to color
@@ -346,9 +346,10 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->GetActiveCamera()->SetFocalPoint(focal_point.Get(0)*dataCube.x_scale_factor,focal_point.Get(1)*dataCube.y_scale_factor,focal_point.Get(2)*dataCube.z_scale_factor);
     //ren1->GetActiveCamera()->SetDistance(distance);
     colorTransferFunction->RemoveAllPoints();
-    colorTransferFunction->AddRGBPoint(dataCube.min_pixel_val, 0.0, 0.0, 0.0);
-    colorTransferFunction->AddRGBPoint(dataCube.min_pixel_val, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
-    colorTransferFunction->AddRGBPoint(dataCube.max_pixel_val, 1.0, 1.0, 1.0);
+    colorTransferFunction->AddRGBPoint(0.0, 0.0, 0.0, 0.0);
+    colorTransferFunction->AddRGBPoint(0.0, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
+    //colorTransferFunction->AddRGBPoint(round(dataCube.min_pixel_val*10)/10, rgb.Get(0)/255, rgb.Get(1)/255, rgb.Get(2)/255);
+    colorTransferFunction->AddRGBPoint(round(dataCube.max_pixel_val*10)/10, 1.0, 1.0, 1.0);
 
 
     cout << "Trying to set cropping planes" << endl;
@@ -614,6 +615,8 @@ class GreeterServiceImpl final : public Greeter::Service {
     d.add_dimensions_lod(dataCube.new_dim_x);
     d.add_dimensions_lod(dataCube.new_dim_y);
     d.add_dimensions_lod(dataCube.new_dim_z);
+    d.set_min_pixel(dataCube.min_pixel_val);
+    d.set_max_pixel(dataCube.max_pixel_val);
     //cout << dataCube.LOD_num_bytes << endl;
     for (int i = 0; i < dataCube.LOD_num_bytes; i += bytes_per_write){
       if ( dataCube.LOD_num_bytes - i < bytes_per_write){

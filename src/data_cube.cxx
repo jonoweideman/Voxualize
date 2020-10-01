@@ -357,8 +357,9 @@ float DataCube::calculateMax(int i, int j, int k){
         if (temp > max_pixel_val){
           max_pixel_val = temp;
         }
-        if (temp < min_pixel_val)
+        if (temp < min_pixel_val) {
           min_pixel_val = temp;
+        }
         if (isfinite(temp) && temp > max_pixel){
           max_pixel = temp;
         }
@@ -377,8 +378,9 @@ float DataCube::calculateMax(int i, int j, int k, int * cplanes){
         if (temp > max_pixel_val){
           max_pixel_val = temp;
         }
-        if (temp < min_pixel_val)
+        if (temp < min_pixel_val){
           min_pixel_val = temp;
+        }
         if (isfinite(temp) && temp > max_pixel){
           max_pixel = temp;
         }
@@ -395,6 +397,12 @@ float DataCube::calculateMean(int i, int j, int k){
     for (int y = ceil(j*y_scale_factor); y < ceil((j+1)*y_scale_factor) && y < dimy; y++){
       for (int z = ceil(k*z_scale_factor); z < ceil((k+1)*z_scale_factor) && z < dimz; z++){
         float temp = *(floatArray + x + y*dimx + z*dimx*dimy);
+        if (temp > max_pixel_val){
+          max_pixel_val = temp;
+        }
+        if (temp < min_pixel_val){
+          min_pixel_val = temp;
+        }
         if (isfinite(temp)){
           sum_pixels += temp;
           temp_num_pixels++;
