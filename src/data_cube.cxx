@@ -17,7 +17,6 @@ void DataCube::createCube(std::string fileName){
   cout << "Constructing DataCube object from " + fileName + " file." << endl;
   (*this).fileName = fileName;
   readInData();
-  //generateLODModel(); To be called externally.
 }
 
 // Default destructor
@@ -31,13 +30,13 @@ void DataCube::readInData(){
     string fileSuffix(fileName.substr(fileName.find('.')));
     if (fileSuffix == ".fits"){
       //Read FITS file. Don't need to search in File_Information.txt
-      readFitsFile();
+      readFitsFile(); // TO DO.
     } else if (fileSuffix == ".arr") {
       // Read raw file. Need to search in File_information.txt
       readRawFile();
     } else if (fileSuffix == ".vtk") {
       // Read vtk. I assume it has dimensions in the file.
-      readVtkFile();
+      readVtkFile(); // TO DO.
     } else {
       // Undetected file extension, attempt to read it as raw...
       readRawFile();
@@ -74,8 +73,6 @@ void DataCube::readRawFile(){
       constructedCorrectly = false;
       return;
     }
-
-
   } else {
     std::cerr<< "Unrecognized file type or is raw input and dimensions not specified in Data/File_Information" << std::endl;
     constructedCorrectly = false;
@@ -83,15 +80,17 @@ void DataCube::readRawFile(){
 }
 
 void DataCube::readFitsFile(){
-  // Do not need dimensions
+  // TO DO
   return;
 }
 
 void DataCube::readVtkFile(){
-  // Do not need dimensions
+  // TO DO
   return;
 }
 
+// Check to see if the specified filename is specified in File_Information.txt.
+// If it is, get the dimensions and return true.
 bool DataCube::getDimensions(int *dims){
   // If filename is in File_Information.txt, return true.
   ifstream infile("../../../Data/File_Information.txt");
@@ -122,7 +121,6 @@ bool DataCube::getDimensions(int *dims){
 
 // Given the Size of the desired LOD model, create it.
 float * DataCube::generateLODModel(int size_in_mb){
-
   // Intial LOD model is for entire cube. Set cplanes accordingly:
   current_cplanes_lod_model[0] = 0; current_cplanes_lod_model[1] = dimx-1;
   current_cplanes_lod_model[2] = 0; current_cplanes_lod_model[3] = dimy-1;
@@ -156,29 +154,19 @@ float * DataCube::generateLODModel(int size_in_mb){
   new_dim_y = ceil(array[1]);
   new_dim_z = ceil(array[2]);
 
-  cout << "New dimensions: " << new_dim_x << ' ' << new_dim_y<< ' ' << new_dim_z << endl;
-  // current_cplanes_lod_model[0] = 0; current_cplanes_lod_model[1] = new_dim_x-1;
-  // current_cplanes_lod_model[2] = 0; current_cplanes_lod_model[3] = new_dim_y-1;
-  // current_cplanes_lod_model[4] = 0; current_cplanes_lod_model[5] = new_dim_z-1;
-
   LOD_num_pixels = new_dim_x*new_dim_y*new_dim_z;
   LOD_num_bytes = LOD_num_pixels * sizeof(float);
-  cout << "LOD_num_bytes: " << LOD_num_bytes << endl;
   LODFloatArray = new float [LOD_num_pixels];
 
   x_scale_factor = (float)dimx / new_dim_x;
   y_scale_factor = (float)dimy / new_dim_y;
   z_scale_factor = (float)dimz / new_dim_z;
 
-  cout << x_scale_factor << ' ' << y_scale_factor << ' ' << z_scale_factor << endl;
-
   if (s_method == "Max") {
     for (int i=0; i<new_dim_x; i++){
       for (int j=0; j<new_dim_y; j++){
         for (int k=0; k<new_dim_z; k++){
-          // Calc mean/min/max/etc...
           *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k);
-          //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
         }
       }
     }
@@ -186,31 +174,20 @@ float * DataCube::generateLODModel(int size_in_mb){
     for (int i=0; i<new_dim_x; i++){
       for (int j=0; j<new_dim_y; j++){
         for (int k=0; k<new_dim_z; k++){
-          // Calc mean/min/max/etc...
           *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
-          //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
         }
       }
     }
   }
-  cout << "Max_pixel_val = " << max_pixel_val << endl;
-  cout << "Min_pixel_val = " << min_pixel_val << endl;
   return LODFloatArray;
 }
 
+// Generate LOD model, when cropping_dims are specified.
 float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
-  cout << "Cropping_dims on backend: " << current_cplanes_lod_model[0] << ' ' << current_cplanes_lod_model[1] << ' ' << current_cplanes_lod_model[2] << endl;
-  cout << current_cplanes_lod_model[3] << ' ' << current_cplanes_lod_model[4] << ' ' << current_cplanes_lod_model[5] << endl;
-  
-  cout << "Requested cropping dims new LOD: " << cropping_dims[0] << ' ' << cropping_dims[1] << ' '  << cropping_dims[2] << endl;
-  cout << cropping_dims[3] << ' ' << cropping_dims[4] << ' '  << cropping_dims[5] << endl;
   if (cropping_dims[0]!=0 || cropping_dims[1]+1!=new_dim_x
       || cropping_dims[2]!=0 || cropping_dims[3]+1!=new_dim_y
       || cropping_dims[4]!=0 || cropping_dims[5]+1!=new_dim_z){
-    // New ROI.
     cout << "New ROI requested" << endl;
-    cout << "Cropping_dims requested: " << cropping_dims[0] << ' ' << cropping_dims[1] << ' ' << cropping_dims[2] << endl;
-    cout << cropping_dims[3] << ' ' << cropping_dims[4] << ' ' << cropping_dims[5] << endl;
     current_cplanes_lod_model[0] = ceil(cropping_dims[0]*x_scale_factor);
     current_cplanes_lod_model[1] = ceil(cropping_dims[1]*x_scale_factor);
     current_cplanes_lod_model[2] = ceil(cropping_dims[2]*y_scale_factor);
@@ -224,9 +201,7 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
       for (int i=0; i<new_dim_x; i++){
         for (int j=0; j<new_dim_y; j++){
           for (int k=0; k<new_dim_z; k++){
-            // Calc mean/min/max/etc...
             *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k, &current_cplanes_lod_model[0]);
-            //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
           }
         }
       }
@@ -234,9 +209,7 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
       for (int i=0; i<new_dim_x; i++){
         for (int j=0; j<new_dim_y; j++){
           for (int k=0; k<new_dim_z; k++){
-            // Calc mean/min/max/etc...
             *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k, &current_cplanes_lod_model[0]);
-            //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
           }
         }
       }
@@ -272,9 +245,7 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
                      (current_cplanes_lod_model[5]+1-current_cplanes_lod_model[4]);
     LODFloatArray = new float [LOD_num_pixels];
     LOD_num_bytes = LOD_num_pixels*4;
-    
-    cout << current_cplanes_lod_model[0] << ' ' << current_cplanes_lod_model[2] << ' ' << current_cplanes_lod_model[4] << endl;
-    cout << new_dim_x << ' ' << new_dim_y << ' ' << new_dim_z << endl;
+
     for (int i = 0, x = current_cplanes_lod_model[0]; i < new_dim_x; i++, x++){
       for (int j = 0, y = current_cplanes_lod_model[2]; j < new_dim_y; j++, y++){
         for (int k = 0, z = current_cplanes_lod_model[4]; k < new_dim_z; k++, z++){
@@ -282,7 +253,6 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
         }
       }
     }
-    cout << "Finished generating largest LOD model" << endl;
     return &LODFloatArray[0];
     
   } else {
@@ -326,9 +296,7 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
       for (int i=0; i<new_dim_x; i++){
         for (int j=0; j<new_dim_y; j++){
           for (int k=0; k<new_dim_z; k++){
-            // Calc mean/min/max/etc...
             *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMax(i,j,k, &current_cplanes_lod_model[0]);
-            //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
           }
         }
       }
@@ -336,9 +304,7 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
       for (int i=0; i<new_dim_x; i++){
         for (int j=0; j<new_dim_y; j++){
           for (int k=0; k<new_dim_z; k++){
-            // Calc mean/min/max/etc...
             *(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k, &current_cplanes_lod_model[0]);
-            //*(LODFloatArray + i + j*new_dim_x + k*new_dim_x*new_dim_y) = calculateMean(i,j,k);
           }
         }
       }
@@ -348,6 +314,8 @@ float * DataCube::generateLODModelNew(int size_in_mb, float * cropping_dims){
   }
 }
 
+// Given the pixels coordinates in the LOD model, calculate it value by sampling the corresponding
+// area in the full cube. Assumes LOD model corresponding to full cube.
 float DataCube::calculateMax(int i, int j, int k){
   float max_pixel = numeric_limits<float>::min();
   for (int x = floor(i*x_scale_factor); x < ceil((i+1)*x_scale_factor) && x < dimx; x++){
@@ -369,6 +337,7 @@ float DataCube::calculateMax(int i, int j, int k){
   return max_pixel;
 }
 
+// Same as above, although does not assume full cube. (Could be ROI).
 float DataCube::calculateMax(int i, int j, int k, int * cplanes){
   float max_pixel = numeric_limits<float>::min();
   for (int x = floor((float)cplanes[0]+i*x_scale_factor); x < ceil((float)cplanes[0]+(i+1)*x_scale_factor) && x < cplanes[1]; x++){
@@ -390,6 +359,7 @@ float DataCube::calculateMax(int i, int j, int k, int * cplanes){
   return max_pixel;
 }
 
+// Same as calculateMax, except byt sampling the Mean value.
 float DataCube::calculateMean(int i, int j, int k){
   float sum_pixels = 0;
   int temp_num_pixels = 0;
@@ -413,6 +383,7 @@ float DataCube::calculateMean(int i, int j, int k){
   return sum_pixels / temp_num_pixels;
 }
 
+// Same as above, although does not assume full cube. (Could be ROI).
 float DataCube::calculateMean(int i, int j, int k, int * cplanes){
   float sum_pixels = 0;
   int temp_num_pixels = 0;
@@ -429,7 +400,6 @@ float DataCube::calculateMean(int i, int j, int k, int * cplanes){
   }
   return sum_pixels / temp_num_pixels;
 }
-
 
 char * DataCube::getBytePointerFullModel(){
   return reinterpret_cast<char *>(floatArray);
