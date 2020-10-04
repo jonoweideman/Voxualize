@@ -116,6 +116,7 @@ class GreeterServiceImpl final : public Greeter::Service {
 
   int window_width;
   int window_height;
+  std::string uuid;
 
   unsigned char * pointer;
 
@@ -303,11 +304,19 @@ class GreeterServiceImpl final : public Greeter::Service {
     const google::protobuf::RepeatedField<float> view_up = request->view_up();
     const google::protobuf::RepeatedField<float> rgb = request->rgba();
     const google::protobuf::RepeatedField<float> cplanes = request->cropping_planes();
+    const google::protobuf::RepeatedField<double> opacity_array = request->opacity_array();
+    
+    opacityTransferFunction->RemoveAllPoints();
+    for (int i = 0; i<opacity_array.size(); i = i+2){
+      opacityTransferFunction->AddPoint(opacity_array[i], opacity_array[i+1]);
+    }
+
     const float alpha = request->alpha();
     const double distance = request->distance();
     window_width = request->window_width();
     window_height = request->window_height();
-    
+    //uuid = request->uuid();
+
     renWin -> Finalize();
     renWin-> Initialize();
     renWin->SetSize(window_width, window_height);
@@ -550,6 +559,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     d.set_size_in_bytes(num_bytes_tmp);
     d.set_width(window_width);
     d.set_height(window_height);
+    //d.set_uuid(uuid);
 
     for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
       if ( num_bytes_tmp - i < bytes_per_write){
