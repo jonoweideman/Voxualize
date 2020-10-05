@@ -109,7 +109,6 @@ bool DataCube::getDimensions(int *dims){
 
     if (tempFileName == fileName){
       // Found the file.
-      cout << "Found the file in File_Information.txt" << endl;
       dataType = tempDataType;
       return true;
     } else {

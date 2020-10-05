@@ -641,8 +641,91 @@ void RunServer()
   server->Wait();
 }
 
+void Test(){
+  int fail = 0;
+  DataCube dataCube;
+  std::string file_name;
+
+  int dims[3];
+  dataCube.fileName = "non-existent_file.arr";
+  bool exists = dataCube.getDimensions(dims);
+  if (exists == false)
+    cout << "Test 1 passed (getDimensions - file not in File_Information.txt" << endl;
+  else {
+    cout << "Test 1 failed (getDimensions - file not in File_Information.txt" << endl;
+    fail++;
+  }
+  dataCube.fileName = "ds9.arr";
+  exists = dataCube.getDimensions(dims);
+  if (exists == true)
+    cout << "Test 2 passed (getDimensions - file is in File_Information.txt)" << endl;
+  else {
+    cout << "Test 2 failed (getDimensions - file is in File_Information.txt)" << endl;
+    fail++;
+  }
+  
+  file_name = "ds9.arr";
+  dataCube.createCube(file_name);
+  float * ptr = dataCube.getFloatPointerFullModel();
+  if (-(int)(ptr[0]*1000000000)==157670 && -(int)(ptr[1]*1000000000)==649469 && -(int)(ptr[2]*1000000000)==953495)
+    cout << "Test 3 passed (createCube)" << endl;
+  else {
+    cout << "Test 3 failed (createCube)" << endl;
+    fail++;
+  }
+  
+  dataCube.generateLODModel(10);
+  int cplanes[6] = {0, 100, 0, 100, 20, 100};
+  if ((int)(dataCube.calculateMax(4,4,4)*1000000000)==478817)
+    cout << "Test 4 passed (calculateMax - full model)" << endl;
+  else {
+    cout << "Test 4 failed (calculateMax - full model)" << endl;
+    fail++;
+  }
+  if (-(int)(dataCube.calculateMean(4,4,4)*1000000000)==42853)
+    cout << "Test 5 passed (calculateMean - full model)" << endl;
+  else {
+    cout << "Test 5 failed (calculateMean - full model)" << endl;
+    fail++;
+  }
+  if ((int)(dataCube.calculateMax(4,4,4,&cplanes[0])*10000000)==10294)
+    cout << "Test 6 passed (calculateMax - with cplanes specified)" << endl;
+  else {
+    cout << "Test 6 failed (calculateMax - with cplanes specified)" << endl;
+    fail++;
+  }
+  if ((int)(dataCube.calculateMean(4,4,4,&cplanes[0])*1000000000)==53703)
+    cout << "Test 7 passed (calculateMean - with cplanes specified)" << endl;
+  else {
+    cout << "Test 7 failed (calculateMean - with cplanes specified)" << endl;
+    fail++;
+  }
+
+  float cplanes2[6] = {0, 100, 0, 100, 20, 100};
+  dataCube.generateLODModelNew(10, &cplanes2[0]);
+  ptr = dataCube.LODFloatArray;
+
+  if (-(int)(ptr[0]*1000000000)==75495 && -(int)(ptr[1]*1000000000)==288029 && -(int)(ptr[2]*1000000000)==240666)
+    cout << "Test 8 passed (generateLODModelNew)" << endl;
+  else {
+    cout << "Test 8 failed (generateLODModelNew)" << endl;
+    fail++;
+  }
+
+  if (fail>0){
+    cout << fail << " tests were failed." << endl;
+  } else
+    cout << "All tests were passed." << endl;
+}
+
 int main(int argc, char *argv[])
 {
-  RunServer();
+  cout << argv[0] << ' ' <<argv[1] << argc << endl;
+  string test = argv[1];
+  if ( argc > 1 && test.compare("tests")==0){
+    Test();
+  } else 
+    RunServer();
+
   return 0;
 }
