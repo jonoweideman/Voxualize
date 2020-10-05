@@ -720,10 +720,11 @@ void Test(){
 
 int main(int argc, char *argv[])
 {
-  cout << argv[0] << ' ' <<argv[1] << argc << endl;
-  string test = argv[1];
-  if ( argc > 1 && test.compare("tests")==0){
-    Test();
+  string test;
+  if (argc >1) 
+    test = argv[1];
+  if (test.compare("tests")==0){
+   Test();
   } else 
     RunServer();
 

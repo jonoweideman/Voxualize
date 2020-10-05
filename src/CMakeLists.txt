@@ -168,6 +168,7 @@ add_custom_command(
 SET(ffmpeg_install_dir "po" CACHE PATH "Some user-specified option")
 SET(zfp_lib_dir "po" CACHE PATH "Some user-specified option")
 SET(ffmpeg_lib_dir "po" CACHE PATH "Some user-specified option")
+set(VTK_LEGACY_SILENT=True)
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}" ../include ${ffmpeg_install_dir}/include)
 include(${VTK_USE_FILE})
