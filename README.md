@@ -1,12 +1,12 @@
 ## HOW TO RUN
 
-The following software is required in order to run Voxualize:
-  FFmpeg (with libx264) - downloadable from https://ffmpeg.org/download.html
-    We recommend these instructions: https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu
-  Zfp - installation instructions: https://zfp.readthedocs.io/en/release0.5.4/installation.html
-  VTK (with EGL activated) - installation instructions: https://vtk.org/Wiki/VTK/Configure_and_Build
-  `protoc` - https://github.com/protocolbuffers/protobuf/releases
-  `protoc-gen-grpc-web` - https://github.com/grpc/grpc-web/releases
+The following software is required in order to run Voxualize:  
+  FFmpeg (with libx264) - downloadable from https://ffmpeg.org/download.html  
+    We recommend these instructions: https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu  
+  Zfp - installation instructions: https://zfp.readthedocs.io/en/release0.5.4/installation.html  
+  VTK (with EGL activated) - installation instructions: https://vtk.org/Wiki/VTK/Configure_and_Build  
+  `protoc` - https://github.com/protocolbuffers/protobuf/releases  
+  `protoc-gen-grpc-web` - https://github.com/grpc/grpc-web/releases  
 
 Make sure they are all executable and are discoverable from your PATH
 
@@ -35,6 +35,8 @@ executed from the src folder.
  If you wish to add a file to be visualizaed on the frontend, add the file to the Data/ directory and add an entry in File_Information.txt with the following format:
 
   `<name> float <dim_x> <dim_y> <dim_z>`
+
+  For example: `milky_way.arr float 300 300 200`
 
 This is required in order that Voxualize knows the dimensions of the data cube.
 
