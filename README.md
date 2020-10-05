@@ -50,4 +50,4 @@ This is required in order that Voxualize knows the dimensions of the data cube.
 ## How to run tests
 Follow all the steps above in "HOW TO RUN". However, when executing the voxualize_server executable, and the parameter `tests`. 
 
-e.g. ./voxualize_server tests
+e.g. `./voxualize_server tests`
