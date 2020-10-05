@@ -260,6 +260,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     renWin = vtkSmartPointer<vtkEGLRenderWindow>::New();
     renWin->Initialize();
     renWin->AddRenderer(ren1);
+    renWin->GlobalWarningDisplayOff();
 
     // Create transfer mapping scalar value to opacity
     // Data values for ds9.arr 540x450x201 are in range [-0.139794;0.153026]
@@ -290,6 +291,9 @@ class GreeterServiceImpl final : public Greeter::Service {
     ren1->GetActiveCamera()->Elevation(30);
     ren1->ResetCameraClippingRange();
     ren1->ResetCamera();
+    renWin->Render();
+    renWin->Frame();
+    renWin->WaitForCompletion();
 
     cout << "Finished setting up EGL render on server." << endl;
     return;
@@ -320,7 +324,6 @@ class GreeterServiceImpl final : public Greeter::Service {
 
     renWin -> Finalize();
     renWin-> Initialize();
-    renWin->GlobalWarningDisplayOff();
     renWin->SetSize(window_width, window_height);
 
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
