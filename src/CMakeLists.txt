@@ -165,16 +165,15 @@ add_custom_command(
 
 # Include generated *.pb.h files
 #include_directories("${CMAKE_CURRENT_BINARY_DIR}" ${AVUTIL_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR} ../include)
-include_directories("${CMAKE_CURRENT_BINARY_DIR}" ../include ~/ffmpeg_build/include)
+SET(ffmpeg_install_dir "po" CACHE PATH "Some user-specified option")
+SET(zfp_lib_dir "po" CACHE PATH "Some user-specified option")
+SET(ffmpeg_lib_dir "po" CACHE PATH "Some user-specified option")
+
+include_directories("${CMAKE_CURRENT_BINARY_DIR}" ../include ${ffmpeg_install_dir}/include)
 include(${VTK_USE_FILE})
 
-# set(VTK_USE_OFFSCREEN_EGL​=True)
-
-#set(VTK_DIR "~/VTK-9.0.1/")
 # Targets voxualize_[async_](client|server)
-# include("${VTK_INSTALL_PREFIX}/lib/vtk-9.0")
 file(GLOB SOURCES "../src/*.cxx")
-
 
 foreach(_target
   voxualize_server)
@@ -188,9 +187,9 @@ foreach(_target
     ${_PROTOBUF_LIBPROTOBUF}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
-    "/usr/lib/x86_64-linux-gnu/libavcodec.so.58"
-    "/usr/lib/x86_64-linux-gnu/libavutil.so.56"
-    "/usr/lib/x86_64-linux-gnu/libswscale.so.5"
-    "/usr/lib/libzfp.so"
+    "${ffmpeg_lib_dir}/libavcodec.so"
+    "${ffmpeg_lib_dir}/libavutil.so.56"
+    "${ffmpeg_lib_dir}/libswscale.so.5"
+    "${zfp_lib_dir}/libzfp.so"
     )
 endforeach()

@@ -9,7 +9,7 @@
 #include <vector>
 #include "zfp.h"
 #include <mutex>
-#include<thread>
+#include <thread>
 
 // ffmpeg
 extern "C" {
@@ -85,7 +85,8 @@ using namespace std;
 
 class GreeterServiceImpl final : public Greeter::Service {
 
-  const int bytes_per_write = 64*64*64; // Performance tests to be run on this.
+  const int bytes_per_write = 64*64*64; // The number of bytes transported in each 
+                                        // protobuf message when streaming data.
 
   DataCube dataCube;
   vtkSmartPointer<vtkFloatArray> floatArray;
@@ -220,7 +221,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     return Status::OK;
   }
 
-  // Reset Cropping Planes to Full.
+  // Reset Cropping Planes to full.
   Status Reset(ServerContext *context, const CameraInfo *request,
                             Empty *reply) override {
     dataCube.generateLODModel(request->target_size_lod_bytes());
@@ -315,7 +316,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     const double distance = request->distance();
     window_width = request->window_width();
     window_height = request->window_height();
-    //uuid = request->uuid();
+    uuid = request->uuid();
 
     renWin -> Finalize();
     renWin-> Initialize();
@@ -551,7 +552,7 @@ class GreeterServiceImpl final : public Greeter::Service {
   }
 
   void streamHQRender(ServerWriter<HQRender> *writer){
-    cout << "Streaming HQ Render" << endl;
+    cout << "Starting to stream HQ Render" << endl;
     char * encodedData = reinterpret_cast<char *>(encodedFramePkt.data);
     int num_bytes_tmp  = encodedFramePkt.size;
 
@@ -559,7 +560,7 @@ class GreeterServiceImpl final : public Greeter::Service {
     d.set_size_in_bytes(num_bytes_tmp);
     d.set_width(window_width);
     d.set_height(window_height);
-    //d.set_uuid(uuid);
+    d.set_uuid(uuid);
 
     for (int i = 0; i < num_bytes_tmp; i += bytes_per_write){
       if ( num_bytes_tmp - i < bytes_per_write){
