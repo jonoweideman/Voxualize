@@ -146,12 +146,12 @@ class GreeterServiceImpl final : public Greeter::Service {
     dataCube.createCube(file_name);
     float cropping_dims[3];
     cropping_dims[0] = dataCube.dimx; cropping_dims[1] = dataCube.dimy; cropping_dims[2] = dataCube.dimz;
-    cout << "request->target_size_lod_bytes(): " <<  request->target_size_lod_bytes() << endl;
     if (request->target_size_lod_bytes() == 0)
       dataCube.generateLODModel(10);
     else
       dataCube.generateLODModel(request->target_size_lod_bytes());
-    
+    if (start_render_thread.joinable())
+      start_render_thread.join();
     start_render_thread = std::thread(&GreeterServiceImpl::createEGLRenderOnServer, this); // would be nice if this is done with a new thread and is thread-safe.
     streamLODModel(writer);
     mtx.unlock();
@@ -320,6 +320,7 @@ class GreeterServiceImpl final : public Greeter::Service {
 
     renWin -> Finalize();
     renWin-> Initialize();
+    renWin->GlobalWarningDisplayOff();
     renWin->SetSize(window_width, window_height);
 
     ren1->GetActiveCamera()->SetPosition(position.Get(0)*dataCube.x_scale_factor,position.Get(1)*dataCube.y_scale_factor,position.Get(2)*dataCube.z_scale_factor);
