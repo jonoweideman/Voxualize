@@ -46,3 +46,8 @@ This is required in order that Voxualize knows the dimensions of the data cube.
 **src/voxualize_server.cxx** handles the main functionality of the server. It handles all the RPC request, as well as encoding and compression.
 
 **src/data_cube.cxx** is responsible for storing the data cube, LOD model generation, cropping cubes, and keeping track of the information about the visualization on the frontend.
+
+## How to run tests
+Follow all the steps above in "HOW TO RUN". However, when executing the voxualize_server executable, and the parameter `tests`. 
+
+e.g. ./voxualize_server tests
